@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>零号站 · 祝福加密工具</title>
+<style>
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#0d0f1a;color:#f2f0e4;max-width:760px;margin:0 auto;padding:24px 16px;line-height:1.7}
+h1{color:#f4c95d;font-size:22px}code{background:#1b2036;padding:1px 5px}
+textarea{width:100%;min-height:260px;background:#1b2036;color:#f2f0e4;border:2px solid #2b3358;font:13px/1.5 monospace;padding:10px;box-sizing:border-box}
+button,input[type=file]{font:inherit;margin:8px 8px 8px 0}button{background:#f4c95d;border:0;padding:8px 14px;cursor:pointer;font-weight:bold}
+#msg{color:#7ec08a;min-height:1.6em}
+</style>
+</head>
+<body>
+<h1>零号站 · 祝福加密工具</h1>
+<p>这个页面只在你自己的浏览器里运行，不会把任何内容传到网上。</p>
+<ol>
+<li>把 <code>people.json</code> 的内容贴进下面第一个框（或者用按钮选择文件），按需要修改名字、口令和祝福。</li>
+<li>点「生成」。把第二个框里的内容整个覆盖到 <code>js/endings.js</code>。</li>
+<li>只把 <code>js/endings.js</code> 传到 GitHub。<b><code>people.json</code> 是明文，不要上传。</b></li>
+</ol>
+<p><b>注意：</b>进站要同时填全名和口令，<code>name</code> 必须是全名。这个页面不处理照片；如果名单里有人有宝箱照片，请改用 <code>build-endings.mjs</code> 生成，否则宝箱会打开成空相框。</p><p>每个人的字段：<code>code</code> 口令（不分大小写）；<code>name</code> 全名（进站时要输入，空格不计）；<code>call</code> 结尾「我们来日方长」后面的称呼（不填就用全名）；<code>easy</code> 是否默认开启陪同模式；<code>item</code> 保管箱里的东西，可选 <code>knife</code> 蝴蝶刀、<code>shuttle</code> 羽毛球、<code>cherry</code> 樱桃、<code>cake</code> 蛋糕、<code>roll</code> 花卷、<code>flower</code> 白花、<code>ghost</code> 小幽灵手办；<code>itemText</code> 保管箱的说明（留空用默认的）；<code>from</code> 署名（会出现在最后一个画面的落款里）。祝福动画对所有人是同一套，只有名字和保管箱里的东西不同。</p>
+<input type="file" id="file" accept=".json,application/json">
+<textarea id="src" spellcheck="false" placeholder='[{"code":"abc","name":"某某","easy":false,"from":"","lines":["第一段","第二段"]}]'></textarea>
+<button id="go" type="button">生成</button><button id="copy" type="button">复制结果</button><button id="dl" type="button">下载 endings.js</button>
+<p id="msg"></p>
+<textarea id="out" spellcheck="false" readonly></textarea>
+<script>
+const $=id=>document.getElementById(id),te=new TextEncoder();
+const b64=u=>btoa(String.fromCharCode(...u));
+$('file').onchange=async e=>{const f=e.target.files[0];if(f)$('src').value=await f.text();};
+$('go').onclick=async()=>{
+  try{
+    const people=JSON.parse($('src').value),res=[],seen=new Set();
+    for(const p of people){
+      const code=String(p.code||'').trim().toLowerCase();
+      if(!code)throw new Error((p.name||'有一个人')+' 没有口令');
+      if(seen.has(code))throw new Error('口令重复：'+code);seen.add(code);
+      const s=crypto.getRandomValues(new Uint8Array(16)),i=crypto.getRandomValues(new Uint8Array(12));
+      const km=await crypto.subtle.importKey('raw',te.encode(String(p.name||'').replace(/\s+/g,'').toLowerCase()+'|'+code),'PBKDF2',false,['deriveKey']);
+      const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:60000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt']);
+      const body={name:p.name,call:p.call||'',easy:!!p.easy,item:p.item||'',itemText:p.itemText||'',from:p.from||'',photo:null};
+      const c=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:i},key,te.encode(JSON.stringify(body))));
+      res.push({s:b64(s),i:b64(i),c:b64(c)});
+    }
+    $('out').value='// 每个人的专属内容，已用各自的口令加密。用 tools/editor.html 重新生成。\nwindow.ENDINGS = '+JSON.stringify(res,null,1)+';\n';
+    $('msg').textContent='已生成 '+res.length+' 个人的内容。';
+  }catch(err){$('msg').textContent='出错了：'+err.message;}
+};
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('out').value);$('msg').textContent='已复制。';}catch(e){$('out').select();$('msg').textContent='自动复制失败，请手动全选复制。';}};
+$('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('out').value],{type:'text/javascript'}));a.download='endings.js';a.click();};
+</script>
+</body>
+</html>
