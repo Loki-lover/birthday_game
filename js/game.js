@@ -72,7 +72,7 @@ function flow(t) {
   return { lit, ok };
 }
 const freshScale = () => ({ loc: [0,0,0,0,0,0,0,0,0], cand: [0,1,2,3,4,5,6,7,8], left: 2, last: '', acc: false, fake: Math.floor(Math.random() * 9) });
-const fresh = () => ({ v: 'map', inv: [], sel: null, f: {}, ch: {}, stars: [], clock: 610, freq: 90, lock: [0,0,0], vault: '', peg: [], tiles: initTiles(), sc: freshScale(), hints: {}, code: '', aff: { z: 0, c: 0 }, word: [], arch: '', chan: null, dial: [0, 0, 0], route: null, end: null, how: {}, facts: [], name: '', shard: [], notes: [], pg: [], rk: [true, true, true, true, true, true, true, true], arr: null, pots: [], srt: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tk: [[5, 90], [6, 30], [4, 0]], tkn: 0, best: {} });
+const fresh = () => ({ v: 'map', inv: [], sel: null, f: {}, ch: {}, stars: [], clock: 610, freq: 90, lock: [0,0,0], vault: '', peg: [], tiles: initTiles(), brk: [0, 0, 0, 0, 0], sc: freshScale(), hints: {}, code: '', aff: { z: 0, c: 0 }, word: [], arch: '', chan: null, dial: [0, 0, 0], route: null, end: null, how: {}, facts: [], name: '', shard: [], notes: [], pg: [], rk: [true, true, true, true, true, true, true, true], arr: null, pots: [], srt: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tk: [[5, 90], [6, 30], [4, 0]], tkn: 0, best: {} });
 function load() { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && o.v && o.tiles && o.sc) return Object.assign(fresh(), o); } catch (e) {} return fresh(); }
 const HOWKEY = { scale: 'scale', clock: 'clock', locker: 'locker', console: 'console', tiles: 'tiles', vault: 'vault', inner: 'pass', crate: 'pass', archive: 'pass', mail: 'mail', rules: 'store', nursery: 'nursery', bunk: 'bunk', shaft: 'shaft' };
 function markHow() {
@@ -177,7 +177,7 @@ const ECHO = {
 };
 function seal(k, how) {
   S.f['seal_' + k] = 1; give('seal_' + k); sfx('win');
-  talk([how, Z(praise())].concat(k === 't' ? fact('mirror') : k === 's' ? fact('morse') : []).concat(askPawn(k)).concat([{ fn: () => { talk([Z({ take: '记下了。赎回的东西，后舱会替你备好。', leave: '记下了。留下的东西，站里会一直替你收着。', give: '记下了。它会顺着下一班补给船出发。' }[S.ch[k]] || '记下了。')].concat(ECHO[k]())); } }]));
+  talk([how, Z(praise())].concat(askPawn(k)).concat([{ fn: () => { talk([Z({ take: '记下了。赎回的东西，后舱会替你备好。', leave: '记下了。留下的东西，站里会一直替你收着。', give: '记下了。它会顺着下一班补给船出发。' }[S.ch[k]] || '记下了。')].concat(ECHO[k]())); } }]));
 }
 function route() {
   const n = { take: 0, leave: 0, give: 0 };
@@ -284,13 +284,13 @@ function drawDock() {
   // 灭火器
   r(92, 70, 8, 22, RD[2]); r(92, 70, 2, 22, RD[3]); r(98, 70, 2, 22, RD[1]); r(93, 66, 6, 4, MT[1]); r(94, 63, 4, 3, MT[3]); line(99, 66, 102, 74, MT[0]); r(93, 78, 6, 5, PP[0]); r(94, 80, 4, 1, RD[2]);
 
-  hot(90, 62, 13, 31, 'fact', 'fire', '灭火器');
+  factHot(90, 62, 13, 31, 'fire', '灭火器');
   // 告示：胶带、标题、文字行、图钉
   ctx.save(); ctx.translate(142, 103); ctx.rotate(-.04); ctx.translate(-142, -103);
   r(121, 95, 44, 18, PP[2]); r(120, 94, 44, 18, PP[0]); r(120, 94, 44, 3, RD[2]); for (let i = 0; i < 4; i++) r(124, 99 + i * 3, 34 - (i % 2) * 8, 1, MT[2]);
   r(118, 93, 6, 3, 'rgba(240,230,190,.7)'); r(158, 93, 6, 3, 'rgba(240,230,190,.7)');
   ctx.restore();
-  hot(120, 94, 44, 18, 'look', '告示：「本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。印章不分先后。」', '告示');
+  hot(120, 94, 44, 18, 'look', '告示：「本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。印章依次领取：先时，再声，后光。」', '告示');
 
   // 储物柜：机身、三扇门、通风百叶、门牌、把手
   r(12, 40, 76, 82, MT[0]); bevel(14, 42, 72, 78, MT, 2);
@@ -459,6 +459,7 @@ function drawGreen() {
   if (S.f.water && !S.f.seed) { px(124, 117 + (tick % 4), CY[4]); px(141, 119 + ((tick + 2) % 4), CY[4]); }
   hot(119, 113, 28, 44, 'paint', '', '向日葵小画');
   hot(14, 124, 26, 18, 'soil', '', '土箱');
+  if (!S.f.cat) { const on = tick % 40 < 3 || (tick % 40 > 5 && tick % 40 < 7); if (on) { r(257, 42, 2, 2, '#ffd84a'); r(266, 42, 2, 2, '#ffd84a'); soft(262, 43, 8, [255, 216, 74], .3); } hot(248, 34, 30, 16, 'eyes', '', '通风口'); }
   if (S.f.sun) {   // 种下的向日葵：花盘朝东（画面右边）
     line(27, 126, 27, 100, GR[3]); r(22, 112, 5, 3, GR[4]); r(28, 106, 5, 3, GR[4]);
     for (let i = 0; i < 12; i++) { const t = i / 12 * 6.283; r(30 + Math.round(Math.cos(t) * 5) - 1, 98 + Math.round(Math.sin(t) * 5) - 1, 3, 3, i % 2 ? YL[2] : YL[3]); }
@@ -590,6 +591,34 @@ function drawBack() {
   dust(1100, 90, 20, 140, 100, 10, '255,230,200');
 }
 
+/* ================= 主线：按顺序推进，随时知道下一步 ================= */
+// 1 时 → 2 通电 → 3 声 → 4 光 → 5 通行章 → 6 验印 → 7 后舱
+function chap() { return !S.f.seal_t ? 1 : !S.f.power ? 2 : !S.f.seal_s ? 3 : !S.f.seal_l ? 4 : !S.f.pass ? 5 : !S.f.gate ? 6 : 7; }
+const seen = k => S.notes.includes(k);
+function goal() {   // [这一步做什么, 去哪个舱段, 更直白的第二句]
+  switch (chap()) {
+    case 1: return !seen('glass') ? ['去温室，看看玻璃幕墙上映着的那座钟指着几点。', 'green', '温室左边那一大块玻璃。点它。']
+      : ['回当铺，把停了的座钟拨到正确的时间，再拉一下钟摆。玻璃里的钟，是镜子里的样子。', 'shop', '镜子里是 8 点 20 分，真正的时间是 3 点 40 分。'];
+    case 2: return !S.f.scale ? ['站里的主电断了。先去当铺的天平，从九枚硬币里找出那枚假币。', 'shop', '点硬币放上左盘或右盘，按「称一次」。只能称两次。']
+      : !S.f.fuseIn ? ['假币里藏着一片保险丝。去机房，把它插进配电板的插槽。', 'core', '在下方物品栏选中保险丝，再点配电板左上角的插槽。']
+      : ['配电板上的电表记录里，有一路的用电比铭牌多。找出它，别让它合着，再合总闸。', 'core', '对不上的两条记录都含「温室摄像」。拉下它，其余四路合上。'];
+    case 3: return !S.f.water ? ['灯亮了。去温室打开喷淋，让花开起来。', 'green', '喷淋开关在温室右边的墙上。']
+      : !seen('radio') ? ['码头小艇上的收音机有三个频道，各播一个数字的电码。去听一听，对照当铺的电码表译出来。', 'dock', '码头右边的小艇，点它。']
+      : ['把三个数字按温室花槽从左到右的颜色排好，去机房打开保险柜。', 'core', '花槽从左到右是红、紫、黄；对应红灯、紫灯、黄灯三个频道。'];
+    case 4: return !S.f.locker ? ['去观星台数一数星图上三个星座各有几颗星，再到码头，按储物柜门上图案的顺序拨密码。', !seen('chart') ? 'obs' : 'dock', '亮的点才是星。柜门上的图案从左到右，就是三个数字的顺序。']
+      : !S.f.lens ? ['把储物柜里的镜片装回观星台的望远镜。', 'obs', '在物品栏选中镜片，再点望远镜。']
+      : ['望远镜里的星座是倒着的。去观星台的控制台，把它正过来连好。', 'obs', '折射式望远镜看到的上下左右都是反的。'];
+    case 5: return !S.route ? ['回到地图上。零有话要问你。', '', '']
+      : { z: ['零想不起是谁切断了主电。去机房，从主机底座进入它的日志。', 'core', ''], c: ['跟螺丝走：温室的通风口。', 'green', ''], l: ['去当铺，柜台后面有一扇写着「档案」的门。', 'shop', ''] }[S.route];
+    case 6: return ['三枚印章和通行章都齐了。去机房的舱门验印。', 'core', ''];
+    default: return ['后舱的门开了。去看看。', 'back', ''];
+  }
+}
+const LOCK = { scale: 2, tiles: 2, radio: 3, vault: 3, locker: 4, tele: 4, console: 4 };
+const LOCKDONE = { scale: () => S.f.scale, tiles: () => S.f.power, radio: () => S.f.seal_s, vault: () => S.f.seal_s, locker: () => S.f.locker, tele: () => S.f.seal_l, console: () => S.f.seal_l };
+const goalPlace = () => { const g = goal()[1]; return g ? V[g].name : '地图'; };
+function locked(p) { return LOCK[p] && chap() < LOCK[p] && !LOCKDONE[p](); }
+
 /* ================= 冷知识（已审核） ================= */
 const FACTS = {
   fire: ['灭火器', '在空间站里点蜡烛，火焰是一颗蓝色的球。地面上热空气往上走、冷空气补进来，才把火焰拉成水滴形；失重的时候没有这种对流。', '火焰的形状，是重力给的。'],
@@ -599,10 +628,14 @@ const FACTS = {
   cat: ['猫', '猫尝不出甜味。甜味受体是两个基因造的蛋白拼起来的，猫科动物的其中一个基因早就坏掉了，老虎、猎豹也一样。', '螺丝把草莓放到你的蛋糕上，不是因为馋。'],
   sun: ['向日葵', '只有还在长个子的向日葵会追着太阳转。开花以后，它们就固定朝东了：朝东的花早上暖得快，引来的传粉昆虫是朝西的五倍。', '「向日葵一直追着太阳」，只对了一半。']
 };
+const FACTIN = { fire: '这只灭火器是地面上的老型号。在这里，它几乎用不上。', power: '配电板角上的小灯泡稳稳地亮着。', mirror: '玻璃里的钟，现在和走廊里那座一起走着。', morse: '电码表的角落里，有人用铅笔写了一行小字：「E 最短，因为 E 最多。」' };
+function factHot(x, y, w, h, k, tip) {   // 藏着「原来如此」的物件：没看过时会闪一颗小星
+  hot(x, y, w, h, 'fact', k, tip); if (!S.facts.includes(k) && tick % 16 < 8) { r(x + w - 2, y - 1, 1, 3, '#fff6c8'); r(x + w - 3, y, 3, 1, '#fff6c8'); }
+}
 function fact(k, who = Z) {
   const f = FACTS[k]; if (!f) return [];
   const first = !S.facts.includes(k); if (first) S.facts.push(k);
-  return [who('（冷知识 · ' + f[0] + '）' + f[1]), who(f[2] + (first ? '　　（已记进笔记的「收获」页，' + S.facts.length + ' / ' + Object.keys(FACTS).length + '）' : ''))];
+  return [who('（冷知识 · ' + f[0] + '）' + f[1]), who(f[2])];
 }
 
 /* ================= 场景 ================= */
@@ -629,15 +662,7 @@ reg('map', { name: '全站地图', desc: () => '零号站的结构图。五个�
     mod(166, 126, 54, 38, 2, 5, 'core', '机房'); circ(193, 141, 6, S.f.power ? 5 : 3); px(193, 141, 6);
     mod(100, 130, 50, 34, 8, 7, S.f.gate ? 'back' : null, '后舱', !!S.f.gate); if (!S.f.gate) { hot(100, 130, 50, 34, 'look', '这个舱段没有亮灯，门从机房那一侧锁着。', '？？？'); r(122, 142, 6, 8, 2); }
   },
-  hint() {
-    const a = [];
-    if (!S.f.seal_t) a.push('「时」：温室的玻璃和当铺的座钟有关系。');
-    if (!S.f.seal_l) a.push('「光」：观星台的望远镜缺东西，星图和码头的储物柜有关系。');
-    if (!S.f.seal_s) a.push(S.f.power ? '「声」：通电以后，温室的喷淋、小艇的收音机、机房的保险柜是一条线。' : '「声」：先让机房通电。当铺的天平是起点。');
-    if (S.route && !S.f.pass) a.push({ z: '「通行章」：机房主机底座上的日志入口。', c: '「通行章」：温室的通风口。', l: '「通行章」：当铺里那扇档案室的门。' }[S.route]);
-    if (!a.length) a.push(S.f.gate ? '去后舱。' : '带着三枚印章和通行章去机房的舱门。');
-    return ['三枚印章可以按任意顺序去找。' + a[0], a.join(' ')];
-  } });
+  hint: () => ['下一步：' + goal()[0], goal()[2] || ('下一步：' + goal()[0])] });
 
 reg('dock', { name: '码头', parent: 'map', desc: () => '你的小艇泊在窗外。左边一排储物柜，右边一台贴着「故障」的自动贩卖机。',
   draw() { drawDock(); },
@@ -691,7 +716,7 @@ reg('clock', { name: '座钟', parent: 'shop', desc: () => S.f.seal_t ? '钟走�
   skip() { S.clock = CLOCK_OK; A.pend(); } });
 
 reg('glass', { name: '玻璃幕墙', parent: 'green', desc: () => '玻璃上映着你身后走廊里的那座钟。钟面没有数字，只有刻度。',
-  draw() { r(0, 0, W, H, 2); for (let i = 0; i < 9; i++) line(-40 + i * 50, H, 30 + i * 50, 0, 3); r(0, 0, W, 6, 11); r(0, H - 6, W, 6, 11); r(0, 0, 6, H, 11); r(W - 6, 0, 6, H, 11); clockFace(160, 90, 58, 500, 5, 2); ctx.globalAlpha = .25; r(40, 20, 240, 140, 4); ctx.globalAlpha = 1; },
+  draw() { r(0, 0, W, H, 2); for (let i = 0; i < 9; i++) line(-40 + i * 50, H, 30 + i * 50, 0, 3); r(0, 0, W, 6, 11); r(0, H - 6, W, 6, 11); r(0, 0, 6, H, 11); r(W - 6, 0, 6, H, 11); clockFace(160, 90, 58, 500, 5, 2); ctx.globalAlpha = .25; r(40, 20, 240, 140, 4); ctx.globalAlpha = 1; if (S.f.seal_t) factHot(100, 30, 120, 120, 'mirror', '玻璃里的钟'); },
   hint: () => ['镜子里的钟，左右是反的。', '看到的是 8 点 20 分，真正的时间是 3 点 40 分。'] });
 
 reg('locker', { name: '储物柜', parent: 'dock', desc: () => S.f.locker ? '柜子开着，里面空了。' : '三扇柜门共用一把密码锁。每个转轮上方各有一个图案。点转轮可以拨数字。',
@@ -764,26 +789,35 @@ reg('morse', { name: '电码表', parent: 'shop', desc: () => '一张旧式数�
     r(0, 0, W, H, 13); r(30, 6, 260, 168, 6); r(30, 6, 260, 10, 14);
     const row = (d, x, y) => { num(x, y, d, 0, 3); let cx = x + 18; for (const ch of MORSE[d]) { if (ch === '.') { r(cx, y + 5, 5, 5, 0); cx += 9; } else { r(cx, y + 5, 14, 5, 0); cx += 18; } } };
     ['1', '2', '3', '4', '5'].forEach((d, i) => row(d, 42, 26 + i * 29)); ['6', '7', '8', '9', '0'].forEach((d, i) => row(d, 168, 26 + i * 29));
+    if (S.f.seal_s) { txt('E 最短，因为 E 最多', 280, 160, 7, 14, 'right', false); factHot(200, 152, 84, 14, 'morse', '铅笔小字'); }
   },
   hint: () => ['听收音机的时候回来对照。', '如果实在抄不下来，机房保险柜那里可以再点提示。'] });
 
-reg('tiles', { name: '配电板', parent: 'core', desc: () => S.f.power ? '线路接通了。' : S.f.fuseIn ? '点线路块可以转动它。把左上角的电一路接到右下角的灯。' : '线路块可以转，但保险丝插槽是空的。',
+// 配电板：断电前的电表记录里，有两条读数和铭牌对不上。多吃电的是「温室摄像」那一路（清洁臂动过手脚）。
+const BRK = [['码头', 2], ['当铺', 2], ['温室灯', 3], ['温室摄像', 1], ['观星台', 2]], BRK_REAL = [2, 2, 3, 5, 2], FUSE_MAX = 10, BRK_OK = [1, 1, 1, 0, 1];
+const TAPE = [[[0, 1, 2], 7], [[1, 3, 4], 9], [[0, 3], 7], [[2, 4], 5]];
+reg('tiles', { name: '配电板', parent: 'core', desc: () => S.f.power ? '五路闸里，四路合着，「温室摄像」那一路拉着。' : S.f.fuseIn ? '五路分闸，每路的铭牌上写着它该用几格电。保险丝最多扛 10 格。右边夹着一卷断电前的电表记录。合好分闸，再合总闸。' : '五路分闸，每路的铭牌上写着它该用几格电。总闸下面的保险丝插槽是空的。',
   draw() {
-    r(0, 0, W, H, 1); r(20, 12, 280, 156, 2); r(20, 12, 280, 2, 4);
-    r(34, 32, 40, 20, 0); if (S.f.fuseIn) { r(40, 38, 28, 8, 5); r(40, 38, 5, 8, 6); r(63, 38, 5, 8, 6); } hot(30, 28, 48, 28, 'fuseSlot', '', '保险丝插槽');
-    const fl = S.f.fuseIn ? flow(S.tiles) : { lit: new Set(), ok: false };
-    r(74, 40, 26, 4, S.f.fuseIn ? 5 : 14);
-    for (let rr = 0; rr < 5; rr++) for (let c = 0; c < 5; c++) {
-      const x = 100 + c * 24, y = 30 + rr * 24, b = rot(BASE[TT[rr][c]], S.tiles[rr][c]), col = fl.lit.has(rr + ',' + c) ? 5 : 14;
-      r(x + 1, y + 1, 22, 22, 0); r(x + 1, y + 1, 22, 1, 3);
-      if (b & 1) r(x + 10, y + 1, 4, 13, col); if (b & 2) r(x + 10, y + 10, 13, 4, col); if (b & 4) r(x + 10, y + 10, 4, 13, col); if (b & 8) r(x + 1, y + 10, 13, 4, col);
-      r(x + 9, y + 9, 6, 6, col);
-      hot(x, y, 24, 24, 'tile', rr + ',' + c, '');
-    }
-    r(220, 136, 30, 4, S.f.power ? 5 : 14); circ(262, 138, 10, 14); circ(262, 138, 8, S.f.power ? 7 : 0);
+    r(0, 0, W, H, MT[0]); bevel(10, 8, 206, 164, MT, 2); r(14, 12, 198, 156, MT[1]);
+    // 保险丝和总闸
+    txt('保险丝 · 10 格', 24, 18, 7, MT[5]); r(24, 30, 48, 18, '#07090f'); if (S.f.fuseIn) { r(30, 35, 36, 8, '#cfe8f0'); r(30, 35, 5, 8, BR[3]); r(61, 35, 5, 8, BR[3]); r(35, 38, 26, 1, S.f.power ? YL[4] : MT[3]); }
+    hot(20, 26, 56, 26, 'fuseSlot', '', '保险丝插槽');
+    r(150, 24, 52, 30, MT[0]); txt('总闸', 176, 16, 7, MT[5], 'center'); r(168, 28, 16, 22, MT[2]); r(172, S.f.power ? 30 : 40, 8, 8, S.f.power ? GR[3] : RD[3]);
+    // 五路分闸
+    BRK.forEach(([n, w], i) => { const x = 22 + i * 38, on = S.f.power ? BRK_OK[i] : S.brk[i];
+      r(x, 64, 32, 92, MT[2]); r(x, 64, 32, 1, MT[4]); txt(n, x + 16, 68, 7, PP[0], 'center');
+      r(x + 10, 86, 12, 40, '#07090f'); r(x + 11, on ? 88 : 110, 10, 14, on ? GR[3] : MT[4]); r(x + 11, on ? 88 : 110, 10, 1, '#ffffff');
+      txt(on ? '合' : '断', x + 16, 130, 7, on ? GR[4] : MT[5], 'center'); txt('额定 ' + w, x + 16, 142, 7, YL[3], 'center');
+      if (!S.f.power) hot(x, 64, 32, 92, 'brk', i, n); });
+    // 电表记录（纸带）
+    r(224, 10, 88, 160, PP[1]); r(222, 8, 88, 160, PP[0]); r(222, 8, 88, 3, RD[2]); txt('断电前的电表记录', 266, 14, 7, '#3a2a20', 'center');
+    TAPE.forEach(([set, v], k) => { const y = 30 + k * 32; txt(set.map(i => BRK[i][0]).join('+'), 228, y, 7, '#3a2a20', 'left', false); txt('读数 ' + v, 304, y + 12, 7, '#3a2a20', 'right'); r(228, y + 25, 76, 1, PP[2]); });
+    txt('……之后熔断', 266, 158, 7, RD[2], 'center', false);
+    if (S.f.power) factHot(160, 22, 50, 34, 'power', '总闸的指示灯');
   },
-  hint: () => [S.f.fuseIn ? '亮起来的线段表示已经有电。从左上角出发，一格一格往右下角接。' : '保险丝藏在当铺天平上那枚假币里。', '路线大致是：先向右一格再向下，绕到左下角，沿底边向右，再从中间往上绕到右上角，最后沿右边一路向下。'],
-  skip() { S.tiles = TS.map(x => x.slice()); if (S.f.fuseIn) powerOn(); else say('线路已经摆好了，但还缺保险丝。'); } });
+  btns: () => S.f.power ? [] : [['合上总闸', 'mains']],
+  hint: () => ['断电前的电表记录里，有两条读数比铭牌加起来多。多出来的电，出在两条里都有、正常的两条里都没有的那一路。', '对不上的两条都含「温室摄像」，对得上的两条都不含它。把「温室摄像」拉下来，其余四路合上，再合总闸。'],
+  skip() { S.brk = BRK_OK.slice(); if (S.f.fuseIn) A.mains(); else say('分闸已经摆好了，但还缺保险丝。'); } });
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'];
 reg('vault', { name: '保险柜', parent: 'core', desc: () => S.f.seal_s ? '保险柜开着，里面空了。' : '保险柜要三位数字。',
@@ -979,11 +1013,11 @@ function events() {
     S.f.bunkIntro = 1; save();
     return talk([Z('{name}，桌上留给你的那颗草莓不见了。盘子倒是被擦得很干净。'), '通风口的栅栏后面，亮起两点黄光。' + (S.f.cat ? '' : '是一只巴掌大的机械猫，外壳上用记号笔写着「螺丝」。'), C('是我拿的。我不吃东西。我想把它放到你的蛋糕上。'), C('别告诉大眼睛。……既然来了，帮我个忙。')]);
   }
-  if (S.f.power && S.v === 'green' && !S.f.cat) {
+  if (S.f.water && S.v === 'green' && !S.f.cat) {
     S.f.cat = 1; save();
-    return talk(['花槽后面，有两点黄光闪了一下。', C('……喵。'), '一只巴掌大的机械猫，外壳上用记号笔写着「螺丝」。它盯着你，尾巴尖的指示灯一闪一闪。',
+    return talk(['水雾刚落下来，通风口里就传来一声短促的：', C('喵——！'), '一只巴掌大的机械猫从栅栏里钻了出来，被浇得透湿，使劲甩了甩头。外壳上用记号笔写着「螺丝」。', S.f.eyes ? '尾巴尖上一闪一闪的，正是那两点黄光。' : '它盯着你，尾巴尖的指示灯一闪一闪。', '（耳机里，零没有出声。温室的摄像头还黑着。）',
       { who: '螺丝', t: '你，不是站里的。你会告诉那个大眼睛吗？', ch: [{ t: '蹲下来，伸手让它闻一闻。', f: () => { S.aff.c += 2; } }, { t: '「大眼睛是说零吗？你为什么躲着它？」', f: () => { S.aff.c += 1; S.aff.z += 1; } }, { t: '后退一步。「我只是来取东西的。」', f: () => { S.aff.z += 1; } }] },
-      C('……随你。水要是开了，我去晒一会儿。别踩我尾巴。')]);
+      C('……随你。那里待不住了，我去灯底下晒干。别踩我尾巴。')]);
   }
   if (S.f.cat && sealsN() >= 2 && !S.route && S.v === 'map') {
     return talk([Z('{name}，占用你一点时间。'), Z('站里有一个没有登记的热源。它一直躲着我的摄像头。'),
@@ -1006,13 +1040,13 @@ const encourage = () => pick(['（别急，' + who() + '。重来一遍，仔细
 
 /* ================= 行为 ================= */
 function winScale() { S.f.scale = 1; S.sc.acc = false; give('fuse'); sfx('win'); say(praise() + '就是它，分量不对。掰开一看，这根本不是硬币：两片薄壳中间卷着一根保险丝。有人把它藏进了硬币堆里。'); return; say('翻过来一看，这根本不是硬币，是一枚自动贩卖机的代币。'); }
-function powerOn() { S.f.power = 1; sfx('win'); talk(['啪。整座空间站的灯依次亮了起来。', Z(praise())].concat(fact('power')).concat([Z('……主电恢复了。谢谢你，{name}。我刚才说话是不是断断续续的？'), Z('现在温室的喷淋可以转了。另外，我左手边的保险柜里锁着一枚印章，密码我自己也忘了，只记得把它存进了三段广播里。码头小艇上的收音机收得到。')])); }
+function powerOn() { S.f.power = 1; S.brk = BRK_OK.slice(); sfx('win'); talk(['你把「温室摄像」那一路拉了下来，合上总闸。', '啪。整座空间站的灯依次亮了起来。', Z(praise())].concat([Z('温室摄像那一路，比铭牌多吃了四格电。像是有人故意让它把保险丝烧断。'), Z('……先不接它了。温室那边，我又成了瞎子。'),Z('……主电恢复了。谢谢你，{name}。我刚才说话是不是断断续续的？'), Z('现在温室的喷淋可以转了。另外，我左手边的保险柜里锁着一枚印章，密码我自己也忘了，只记得把它存进了三段广播里。码头小艇上的收音机收得到。')])); }
 const A = {
   box() { if (!ME) return say('柜台下面是一排保管箱，每只上面都有名牌。没有一只写着「访客」。'); S.f.box = 1; S.v = 'box'; sfx('pick'); say(V.box.desc() + ' 零说，它一直替你收着，走的时候记得带上。'); },
   pet() {
     const it = ME && ME.item && !S.f.catItem;
     if (it) { S.f.catItem = 1; S.aff.c += 1; return talk([C('你身上有' + ITEMNAME[ME.item] + '的味道。'), C('是好东西。收好。')]); }
-    if (S.f.cat && !S.facts.includes('cat')) return talk([C('草莓？我又尝不出甜。我只是觉得它红红的，放在蛋糕上好看。')].concat(fact('cat')));
+    if (S.f.cat && S.f.bunkIntro && !S.facts.includes('cat')) return talk([C('草莓？我又尝不出甜。我只是觉得它红红的，放在蛋糕上好看。')].concat(fact('cat')));
     talk([C(['喵。', '尾巴，别踩。', '大眼睛其实不坏。它只是太听规程的话。', '我修过这座站里所有的灯。'][Math.floor(Math.random() * 4)])]);
   },
   culprit(i) {
@@ -1033,7 +1067,7 @@ const A = {
     if (['t', 's', 'l'].every((k, i) => CH[S.dial[i]] === S.ch[k])) return getPass(['抽屉滑开了。里面只有一个档案袋，封面上是你的口令。', '最上面是一页事故记录：主电是清洁臂切断的，为的是让摄像头照不到一只没登记的机械猫。', '再往下是你自己的当户档案，三张当票的去向一笔一笔记着，和你拨的一模一样。', '最后一栏「通行」是空的，旁边放着一枚章和一盒印泥。你给自己盖了章。']);
     sfx('bad'); say('这只抽屉里是别人的档案。有人把三样东西都留下了，有人全都送了出去。不是你的。');
   },
-  go(p) { sim = null; S.v = p; sfx('step'); say(V[p].desc() + (SUB[p] && !S.f['seen_' + p] ? ' 地板上还有一个舱口，通往' + V[SUB[p]].name + '。' : '')); if (SUB[p]) S.f['seen_' + p] = 1; },
+  go(p) { if (locked(p)) { sfx('click'); return talk([Z('这个先放一放，还没到它。现在该去' + goalPlace() + '。'), Z('不知道做什么，就点「提示」。')]); } sim = null; S.v = p; sfx('step'); say(V[p].desc() + (SUB[p] && !S.f['seen_' + p] ? ' 地板上还有一个舱口，通往' + V[SUB[p]].name + '。' : '')); if (SUB[p]) S.f['seen_' + p] = 1; },
   look(p) { say(p); },
   star(i) { if (!S.stars.includes(+i)) { S.stars.push(+i); sfx('pick'); say('你捡到了一粒星屑。（' + S.stars.length + ' / 3）它在手心里是温的。'); } },
   vend() { say('投币口上贴着一张纸条：「故障」。字迹很工整，像是清洁臂写的。里面的货还亮着灯。'); },
@@ -1087,13 +1121,17 @@ const A = {
   chan(p) { stopMorse(); S.chan = p === '-' ? null : +p; sfx('click'); say(S.chan == null ? '收音机安静了。' : CHL[S.chan][1] + '频道：一串有节奏的滴答声，循环往复。小灯跟着一明一灭。'); },
   fuseSlot() {
     if (S.f.fuseIn) return say('保险丝已经装好。');
-    if (S.sel === 'fuse') { drop('fuse'); S.f.fuseIn = 1; sfx('pick'); if (flow(S.tiles).ok) return powerOn(); return say('保险丝装上了。电进了线路板，但还没有通到灯。'); }
+    if (S.sel === 'fuse') { drop('fuse'); S.f.fuseIn = 1; sfx('pick'); return say('保险丝装上了。上一根就是这么熔断的——合总闸之前，先想想哪几路该合上。'); }
     say('插槽空着，缺一根保险丝。');
   },
-  tile(p) {
-    if (S.f.power) return say('线路已经接通，不必再动。');
-    const [rr, c] = p.split(',').map(Number); S.tiles[rr][c] = (S.tiles[rr][c] + 1) % 4; sfx('click');
-    if (S.f.fuseIn && flow(S.tiles).ok) powerOn();
+  brk(i) { S.brk[i] = S.brk[i] ? 0 : 1; sfx('click'); const sum = S.brk.reduce((a, v, k) => a + (v ? BRK[k][1] : 0), 0); say('铭牌合计：' + sum + ' 格。保险丝最多 ' + FUSE_MAX + ' 格。'); },
+  mains() {
+    if (S.f.power) return;
+    if (!S.f.fuseIn) return say('总闸推上去又弹了回来。保险丝插槽是空的。');
+    const real = S.brk.reduce((a, v, k) => a + (v ? BRK_REAL[k] : 0), 0);
+    if (real > FUSE_MAX) { sfx('bad'); return say('啪！保险丝闪了一下，总闸自己跳了回来。好在没熔断。零：「超载了。有一路的用电，比铭牌上写的多。」'); }
+    if (S.brk.join() !== BRK_OK.join()) { sfx('bad'); return say(S.brk[3] ? '总闸合上了，可有几个舱段还是黑的。零：「每个舱段的灯都要亮。」' : '总闸合上了，可' + BRK.filter((b, k) => k !== 3 && !S.brk[k]).map(b => b[0]).join('、') + '还是黑的。零：「每个舱段的灯都要亮。」'); }
+    powerOn();
   },
   vk(k) {
     if (k === 'C') { S.vault = ''; return; }
@@ -1124,7 +1162,7 @@ const A = {
     if (S.f.end) return showEnd(false);
     if (S.stars.length && !S.f.lit) {
       S.f.cakeTry = (S.f.cakeTry || 0) + 1;
-      if (S.f.cakeTry === 1) return talk(['蛋糕上只插着一根光秃秃的蜡烛。', Z('你身上的星屑在发光，就在屏幕上方，那一串 ✦。'), Z('把它们拖到蛋糕上试试。')]);
+      if (S.f.cakeTry === 1) return talk(['蛋糕上只插着一根蜡烛，还没有点。', Z('站里没有火。……不过，你一路捡的星屑还在发光。'), S.f.cat && S.route !== 'z' ? C('就是你头顶上那一串 ✦。把它们拿下来，放到蛋糕上。') : Z('就是你头顶上那一串 ✦。把它们拿下来，放到蛋糕上。')]);
       if (!S.assist && S.f.cakeTry < 3) return say('零：「这一题要动的是网页本身。按住屏幕上方的 ✦，拖到蛋糕上再松手。」');
       S.f.lit = 1; say('零：「那我替你放上去。」');
     }
@@ -1348,6 +1386,11 @@ function simStep() {
   }
 }
 Object.assign(A, {
+  eyes() {
+    S.f.eyes = (S.f.eyes || 0) + 1;
+    if (S.f.eyes === 1) return talk(['栅栏后面，两点黄光一闪，灭了。', Z('……温室的热感应器这阵子老是误报。断电以后，我的摄像头只看得见一半。'), Z('大概是哪个指示灯的反光。')]);
+    say(S.f.eyes === 2 ? '你凑近栅栏。里面黑漆漆的，有一股机油味，还有一点……草莓味？' : '栅栏后面静悄悄的。你觉得有什么东西正屏住呼吸。');
+  },
   paint() {
     if (S.f.seed) return say('画上的花盘被水化开了，只剩一团黄。' + (S.f.sun ? '真的那一株，在土箱里朝着东边。' : '种子在你手里。'));
     if (!S.f.water) return say('一幅巴掌大的油画：一株向日葵，花盘朝着画框右边。画框背面用铅笔写着一个字：东。颜料摸上去还有点黏，像是很怕水。');
@@ -1360,7 +1403,7 @@ Object.assign(A, {
     drop('seed'); S.f.sun = 1; sfx('win');
     talk(['你把葵花籽按进土里。补光灯一亮，它就冒了芽，一节一节往上长，开出一朵花。', '花盘转了半圈，朝着东边停住了。', Z('画框背面那个「东」字，原来是这个意思。')].concat(fact('sun')));
   },
-  fact(k) { sfx('pick'); talk([Z('这只灭火器是地面上的老型号。在这里，它几乎用不上。')].concat(fact(k))); },
+  fact(k) { sfx('pick'); talk([FACTIN[k]].concat(fact(k))); },
   dc(c) { if (sim) return; if (c === '0') S.pg = []; else if (c === '-') S.pg.pop(); else if (S.pg.length < DMAX) S.pg.push(c); else return say('无人机只装得下 ' + DMAX + ' 条指令。'); sfx('click'); },
   dfly() { if (sim) return; if (!S.pg.length) return say('程序还是空的。'); if (!S.pg.includes('F')) return say('程序里一条「前进」都没有，无人机只会原地打转。'); sim = { kind: 'drone', st: dStart(), i: 0 }; sfx('step'); say('三架无人机同时起飞，照着同一段程序飞。'); },
   rk(i) { S.rk[+i] = !S.rk[+i]; S.arr = null; sfx('click'); },
@@ -1398,7 +1441,7 @@ Object.assign(A, {
 
 /* ---- 笔记本 ---- */
 const NOTES = {
-  dock: '码头告示：集齐时、声、光三枚印章，到机房验印。印章不分先后。',
+  dock: '码头告示：集齐时、声、光三枚印章，到机房验印。印章依次领取：先时，再声，后光。',
   scale: '当铺天平：九枚硬币里有一枚略轻，天平只能借两次。',
   clock: '当铺座钟：停着。拨到正确的时间，再拉钟摆。',
   glass: '温室玻璃：映着走廊里的钟，看上去是 8 点 20 分。镜子里的东西左右是反的。',
@@ -1406,7 +1449,7 @@ const NOTES = {
   chart: '观星台星图：鱼、钥匙、帆三个星座。亮的点才算星。',
   tele: '望远镜铭牌：「折射式。所见上下左右皆反。」',
   console: '观星台控制台：九个插孔三行三列，要把星座连出来。',
-  tiles: '机房配电板：把左上角的电一路接到右下角的灯。缺保险丝。',
+  tiles: '机房配电板：五路分闸，保险丝最多扛 10 格。断电前的电表记录里，有两条读数和铭牌对不上。',
   vault: '机房保险柜：三位数字。零把它存进了三段广播里。',
   radio: '小艇收音机：黄灯、红灯、紫灯三个频道，各循环播一个数字的电码。',
   morse: '电码表（点短、划长）：1 ·————　2 ··———　3 ···——　4 ····—　5 ·····　6 —····　7 ——···　8 ———··　9 ————·　0 —————',
@@ -1420,7 +1463,7 @@ const NOTES = {
   nursery: '苗圃 · 清洁臂：它只会直着滑，撞到东西向右转。放最多 4 只花盆当挡板，让它经过 5 盆干着的花。',
   bunk: '休息舱 · 螺丝：把十二件东西分进盒子。怎么分都行，但要有规矩。',
   shaft: '冷却井 · 温控器：三只水箱互相倒水，让任意一只恰好 42 度。甲 10 升、乙 6 升、丙 4 升。',
-  c_plate: '　· 盘子：擦得锃亮，贴着「已清洁」。', c_print: '　· 地上：梅花形的小油印，通往通风口。', c_duty: '　· 导航副机整晚在驾驶舱值班。', c_order: '　· 清洁臂不进食，擦完东西就贴贴纸。', c_vent: '　· 通风口栅栏上挂着草莓蒂。'
+c_plate: '　· 盘子：擦得锃亮，贴着「已清洁」。', c_print: '　· 地上：梅花形的小油印，通往通风口。', c_duty: '　· 导航副机整晚在驾驶舱值班。', c_order: '　· 清洁臂不进食，擦完东西就贴贴纸。', c_vent: '　· 通风口栅栏上挂着草莓蒂。'
 };
 const has_ = k => S.shard.includes(k);
 const NDONE = { dock: () => S.f.gate, scale: () => S.f.scale, clock: () => S.f.seal_t, glass: () => S.f.seal_t, locker: () => S.f.locker, chart: () => S.f.locker, tele: () => S.f.seal_l, console: () => S.f.seal_l,
@@ -1436,7 +1479,7 @@ function autoNotes() { note(S.v === 'tele' && !S.f.lens ? '' : S.v === 'rules' ?
 function showNotes() {
   const order = Object.keys(NOTES), all = order.filter(k => S.notes.includes(k)), got = all.filter(k => !ndone(k)), gone = all.filter(k => ndone(k) && !k.startsWith('c_')).length;
   const nn = got.filter(k => !k.startsWith('c_')).map(k => `<li>${esc(NOTES[k])}${k === 'bunk' ? got.filter(c => c.startsWith('c_')).map(c => '<br>' + esc(NOTES[c])).join('') : ''}</li>`).join('');
-  $('notebox').innerHTML = `<h2>笔记</h2><p class="sub">看过的线索会自动记在这里</p><p>印章：${['t', 's', 'l'].map(k => S.f['seal_' + k] ? ['时', '声', '光'][['t', 's', 'l'].indexOf(k)] : '＿').join(' ')}　·　星屑 ${S.stars.length} / 3　·　记忆碎片 ${S.shard.length} / 5</p>${nn ? `<ul class="notes">${nn}</ul>` : '<p style="color:#6b8cc4">' + (gone ? '手上的线索都用完了。' : '还没有记下任何东西。') + '</p>'}${gone ? `<p style="color:#6b8cc4;font-size:13px">已经解开、后面用不上的 ${gone} 条线索划掉了。</p>` : ''}<h2 style="margin-top:14px">收获 ${S.facts.length} / ${Object.keys(FACTS).length}</h2>${S.facts.length ? '<ul class="notes">' + Object.keys(FACTS).filter(k => S.facts.includes(k)).map(k => `<li><b>${esc(FACTS[k][0])}</b>　${esc(FACTS[k][1])}</li>`).join('') + '</ul>' : '<p style="color:#6b8cc4">站里藏着一些「原来如此」。解开谜题、到处点点，就会记在这里。</p>'}<div class="row"><button type="button" class="pri" id="nClose">合上</button></div>`;
+  $('notebox').innerHTML = `<h2>笔记</h2><p class="sub">看过的线索会自动记在这里</p><p class="goal"><b>下一步</b>　${esc(goalPlace())}</p><p>印章：${['t', 's', 'l'].map(k => S.f['seal_' + k] ? ['时', '声', '光'][['t', 's', 'l'].indexOf(k)] : '＿').join(' ')}　·　星屑 ${S.stars.length} / 3　·　记忆碎片 ${S.shard.length} / 5</p>${nn ? `<ul class="notes">${nn}</ul>` : '<p style="color:#6b8cc4">' + (gone ? '手上的线索都用完了。' : '还没有记下任何东西。') + '</p>'}${gone ? `<p style="color:#6b8cc4;font-size:13px">已经解开、后面用不上的 ${gone} 条线索划掉了。</p>` : ''}<div class="row"><button type="button" class="pri" id="nClose">合上</button></div>`;
   $('notes').hidden = false; $('nClose').onclick = () => { $('notes').hidden = true; };
 }
 
@@ -1527,7 +1570,9 @@ const HAND = (() => { try {
   m.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = ch === '#' ? '#10141e' : '#f4f0e6'; g.fillRect(x * 2, y * 2, 2, 2); } }));
   return 'url(' + c.toDataURL() + ') 9 0, pointer'; } catch (e) { return 'pointer'; } })();
 let mx = -1, my = -1, puffs = [];
-function feel() {   // 手感：悬停的热区四角描白边，点击处冒一点像素灰
+const SECXY = { dock: [66, 84], shop: [128, 34], green: [204, 32], obs: [269, 82], core: [192, 141], back: [124, 145] };   // 箭头尖的位置：舱段顶边上方
+function feel() {
+  if (S.v === 'map' && !dOn) { const g = SECXY[goal()[1]]; if (g) { const y = g[1] - 22 - (tick % 8 < 4 ? 0 : 2); r(g[0] - 4, y - 1, 9, 7, '#10141e'); r(g[0] - 3, y, 7, 2, '#ffd84a'); r(g[0] - 2, y + 2, 5, 1, '#ffd84a'); r(g[0] - 1, y + 3, 3, 1, '#ffd84a'); r(g[0], y + 4, 1, 1, '#ffd84a'); } }   // 手感：悬停的热区四角描白边，点击处冒一点像素灰
   if (!dOn && mx >= 0) { let h = null; for (let i = hots.length - 1; i >= 0; i--) { const o = hots[i]; if (mx >= o.x && mx < o.x + o.w && my >= o.y && my < o.y + o.h) { h = o; break; } }
     if (h && h.w < 200 && !h.hide) { const a = tick % 4 < 2 ? '#ffffff' : '#c8d8ff', L = Math.min(4, Math.floor(h.w / 3), Math.floor(h.h / 3)), x0 = Math.floor(h.x) - 1, y0 = Math.floor(h.y) - 1, x1 = Math.ceil(h.x + h.w), y1 = Math.ceil(h.y + h.h);
       [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]].forEach(([x, y, dx, dy]) => { r(dx > 0 ? x : x - L + 1, y, L, 1, a); r(x, dy > 0 ? y : y - L + 1, 1, L, a); }); } }
@@ -1544,6 +1589,7 @@ function refresh() {
   const v = V[S.v];
   if (S.v === 'radio' && S.chan != null) startMorse(); else stopMorse(); alarm();
   draw();
+  $('goal').textContent = '下一步：' + goalPlace(); $('goal').hidden = !$('title').hidden;
   $('where').textContent = v.name; $('back').hidden = !v.parent;
   $('labs').innerHTML = S.v === 'map' ? [['码头', 61, 111], ['当铺', 128, 57], ['温室', 205, 59], ['观星台', 270, 113], ['机房', 193, 167], [S.f.gate ? '后舱' : '？？？', 125, 167]].map(([t, x, y]) => `<span class="lab" style="left:${x / 3.2}%;top:${y / 1.8}%">${t}</span>`).join('') : '';
   $('stars').textContent = (S.stars.length ? '✦'.repeat(S.stars.length) : '') + (S.shard.length ? '　◆' + S.shard.length : ''); if ($('title').hidden) autoNotes();
@@ -1578,7 +1624,9 @@ cv.addEventListener('mouseleave', () => { mx = my = -1; $('tip').hidden = true; 
 $('inv').addEventListener('click', e => { const el = e.target.closest('[data-id]'); if (el && !dOn) invClick(el.dataset.id); });
 $('pb').addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (el) act(el.dataset.a, el.dataset.p); });
 $('back').onclick = () => { if (dOn) return; const p = V[S.v].parent; if (p) act('go', p); };
-$('bHint').onclick = () => { if (dOn) return; const v = V[S.v], t = v.hint ? v.hint() : ['四处点点看。'], n = S.hints[S.v] || 0; say('提示：' + t[Math.min(n, t.length - 1)] + (v.skip && !S.assist && n === 0 ? '（在这个画面再点一次提示，就会出现「跳过这一步」' + (v.sol ? '和「看解答」' : '') + '。）' : '')); S.hints[S.v] = n + 1; refresh(); save(); };
+const SECT = ['map', 'dock', 'shop', 'green', 'obs', 'core', 'back'];
+const special = () => (S.v === 'obs' && S.f.seal_l && !S.stars.includes(2)) || (S.v === 'back' && S.stars.length && !S.f.lit && S.f.cakeTry);
+$('bHint').onclick = () => { if (dOn) return; const v = V[S.v], useG = SECT.includes(S.v) && !special(), hk = useG ? 'g:' + goal()[0] : S.v, g = goal(), t = useG ? [g[0], g[2] || g[0]] : v.hint ? v.hint() : ['四处点点看。'], n = S.hints[hk] || 0; say('提示：' + t[Math.min(n, t.length - 1)] + (v.skip && !S.assist && n === 0 ? '（在这个画面再点一次提示，就会出现「跳过这一步」' + (v.sol ? '和「看解答」' : '') + '。）' : '')); S.hints[hk] = n + 1; refresh(); save(); };
 $('bSkip').onclick = () => { if (dOn) return; const v = V[S.v]; if (v.skip) { const hk = HOWKEY[S.v]; if (hk && !S.how[hk]) S.how[hk] = S.assist ? 'zero' : 'skip'; skipping = true; try { v.skip(); } finally { skipping = false; } refresh(); save(); } };
 $('bSnd').onclick = () => setMute(!muted);
 $('bMenu').onclick = () => { stopMorse(); showTitle(); };
@@ -1962,7 +2010,7 @@ const started = () => S.inv.length || Object.keys(S.f).length || S.stars.length;
 function showTitle() { $('assist').checked = !!S.assist; $('title').hidden = false; $('code').value = S.code || ''; $('pname').value = S.name || ''; $('bGo').textContent = started() ? '继续' : '进站'; $('bNew').hidden = !started(); $('tmsg').textContent = ''; }
 function startGame() {
   $('title').hidden = true; audio(); say(V[S.v].desc()); refresh();
-  if (!S.f.intro) { S.f.intro = 1; save(); talk(['小艇靠上了码头。对接舱的灯只亮了一半。', Z('……有人……来了？'), Z('欢迎来到零号站，{name}。我是这里的管理员，他们叫我「零」。'), Z('站里的主电断了，我说话可能断断续续。不过你要取的东西还在。'), Z('集齐时、声、光三枚印章，后舱的门就会为你打开。顺序随你。'), Z('对了，当铺柜台下面有一只写着你名字的保管箱。有空可以去看看。'),].concat(S.assist ? [Z('还有，你这次是「陪同模式」。意思是：每道谜题的右上角都有一个「请零代劳」，点一下，我就替你解开。'), Z('故事和选择还是你自己的。想自己解也完全可以，不点那个按钮就行；想关掉，去右上角的菜单。')] : []).concat([ Z('还有，每个舱段的地板上都有一个舱口，下面各有一间小屋。不去也能离站，去了会有别的收获。'), '（右上角的「笔记」会自动记下你看到的线索。）',]).concat([ '（点地图上的舱段进入。右上角有提示，卡住了不丢人。）'])); }
+  if (!S.f.intro) { S.f.intro = 1; save(); talk(['小艇靠上了码头。对接舱的灯只亮了一半。', Z('……有人……来了？'), Z('欢迎来到零号站，{name}。我是这里的管理员，他们叫我「零」。'), Z('站里的主电断了，我说话可能断断续续。不过你要取的东西还在。'), Z('集齐时、声、光三枚印章，后舱的门就会为你打开。'), Z('每一步要做什么，我都写在画面下方那一行「下一步」里；地图上也会标出该去哪。'), Z('先从温室开始吧。那里的玻璃上，映着一座钟。'), Z('对了，当铺柜台下面有一只写着你名字的保管箱。有空可以去看看。'),].concat(S.assist ? [Z('还有，你这次是「陪同模式」。意思是：每道谜题的右上角都有一个「请零代劳」，点一下，我就替你解开。'), Z('故事和选择还是你自己的。想自己解也完全可以，不点那个按钮就行；想关掉，去右上角的菜单。')] : []).concat([ Z('还有，每个舱段的地板上都有一个舱口，下面各有一间小屋。不去也能离站，去了会有别的收获。'), '（右上角的「笔记」会自动记下你看到的线索。）',]).concat([ '（点地图上的舱段进入。右上角有提示，卡住了不丢人。）'])); }
 }
 async function enter(direct) {
   const code = $('code').value, nm = $('pname').value, any = norm(code) || normName(nm);
@@ -1993,5 +2041,5 @@ async function renderCGAudio(dur) {
   let bin = ''; const u = new Uint8Array(out.buffer); for (let i = 0; i < u.length; i += 32768) bin += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
   return { peak, b64: btoa(bin) };
 }
-window.__G = { get sim() { return sim; }, renderCGAudio, runCG, endCG, get cgOn() { return cgOn; }, set cgT(v) { cgT0 = performance.now() - v * 1000; fwSeen = {}; }, photoImg, get ME() { return ME; }, get S() { return S; }, get shuf() { return shuf; }, get hots() { return hots; }, get dOn() { return dOn; }, flow, TS, LOCK_CODE, PEG_OK, unlock, route };
+window.__G = { get sim() { return sim; }, get tick() { return tick; }, renderCGAudio, runCG, endCG, get cgOn() { return cgOn; }, set cgT(v) { cgT0 = performance.now() - v * 1000; fwSeen = {}; }, photoImg, get ME() { return ME; }, get S() { return S; }, get shuf() { return shuf; }, get hots() { return hots; }, get dOn() { return dOn; }, flow, TS, LOCK_CODE, PEG_OK, unlock, route };
 })();

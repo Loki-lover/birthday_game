@@ -79,6 +79,8 @@ button.pri{background:var(--gold);color:#1b1408;border-color:#fff3c4;font-weight
 .memo{border-top:2px dashed var(--slate);margin-top:16px;padding-top:6px}.memo h3{color:var(--gold);margin:8px 0 4px;font-size:17px;letter-spacing:.15em}.memo p{margin:6px 0}.memo .sig{text-align:right;color:var(--gold);font-weight:bold}
 @media (max-width:520px){#dlg{position:fixed;left:8px;right:8px;bottom:8px;z-index:4}body{font-size:14px}h1{font-size:16px}.slot{width:54px}}
 #stars{cursor:grab;user-select:none}#stars:active{cursor:grabbing}
+#goal{margin:8px 0 2px;padding:6px 10px;border-left:3px solid #ffd84a;background:#151a2c;color:#ffd84a;font-size:.95em;line-height:1.5}
+#notebox .goal{padding:6px 10px;border-left:3px solid #ffd84a;background:#151a2c;color:#ffe9a0}
 </style>
 </head>
 <body>
@@ -104,6 +106,7 @@ button.pri{background:var(--gold);color:#1b1408;border-color:#fff3c4;font-weight
     <div id="ntoast" hidden>已记入笔记</div>
     <div id="dlg" hidden><span id="dnext">点击继续 ▸</span><div id="dwho"></div><div id="dtext"></div><div id="dch"></div></div>
   </div>
+  <p id="goal" hidden></p>
   <p id="cap" aria-live="polite"></p>
   <div id="pb"></div>
   <div id="inv" aria-label="物品栏"></div>
