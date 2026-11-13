@@ -8,7 +8,7 @@ let ctx = cv.getContext('2d');
 const PAL = ['#0d0f1a','#1b2036','#2b3358','#40508a','#6b8cc4','#a8d0e6','#f2f0e4','#f4c95d','#e8894a','#c8504a','#7a3050','#3f7a5a','#7ec08a','#5a4636','#8a6c4e','#b79ae8','#ff7ac0','#b0388f','#4a2a78','#6aa8ff','#18c964','#0b6b3a','#9af5c0','#4fb3c4','#2f7d8c'];
 let hots = [], tick = 0;
 
-function r(x, y, w, h, c) { ctx.fillStyle = PAL[c]; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+function r(x, y, w, h, c) { ctx.fillStyle = typeof c === 'string' ? c : PAL[c]; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
 function px(x, y, c) { r(x, y, 1, 1, c); }
 function line(x0, y0, x1, y1, c, t = 1) {
   x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
@@ -72,7 +72,7 @@ function flow(t) {
   return { lit, ok };
 }
 const freshScale = () => ({ loc: [0,0,0,0,0,0,0,0,0], cand: [0,1,2,3,4,5,6,7,8], left: 2, last: '', acc: false, fake: Math.floor(Math.random() * 9) });
-const fresh = () => ({ v: 'map', inv: [], sel: null, f: {}, ch: {}, stars: [], clock: 610, freq: 90, lock: [0,0,0], vault: '', peg: [], tiles: initTiles(), sc: freshScale(), hints: {}, code: '', aff: { z: 0, c: 0 }, word: [], arch: '', chan: null, dial: [0, 0, 0], route: null, end: null, how: {}, name: '', shard: [], notes: [], pg: [], rk: [true, true, true, true, true, true, true, true], arr: null, pots: [], srt: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tk: [[5, 90], [6, 30], [4, 0]], tkn: 0, best: {} });
+const fresh = () => ({ v: 'map', inv: [], sel: null, f: {}, ch: {}, stars: [], clock: 610, freq: 90, lock: [0,0,0], vault: '', peg: [], tiles: initTiles(), sc: freshScale(), hints: {}, code: '', aff: { z: 0, c: 0 }, word: [], arch: '', chan: null, dial: [0, 0, 0], route: null, end: null, how: {}, facts: [], name: '', shard: [], notes: [], pg: [], rk: [true, true, true, true, true, true, true, true], arr: null, pots: [], srt: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tk: [[5, 90], [6, 30], [4, 0]], tkn: 0, best: {} });
 function load() { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && o.v && o.tiles && o.sc) return Object.assign(fresh(), o); } catch (e) {} return fresh(); }
 const HOWKEY = { scale: 'scale', clock: 'clock', locker: 'locker', console: 'console', tiles: 'tiles', vault: 'vault', inner: 'pass', crate: 'pass', archive: 'pass', mail: 'mail', rules: 'store', nursery: 'nursery', bunk: 'bunk', shaft: 'shaft' };
 function markHow() {
@@ -98,6 +98,7 @@ const ITEMS = {
   token: ['代币', '比真硬币轻一点，边上刻着「自动贩卖」。'],
   fuse: ['保险丝', '玻璃管里的细丝完好无损。'],
   lens: ['镜片', '一片磨得很好的物镜。'],
+  seed: ['葵花籽', '从画里掉出来的。捏一捏，是真的。'],
   seal_t: ['印章·时', '刻着一只没有指针的钟。'],
   seal_s: ['印章·声', '刻着三道波纹。'],
   seal_l: ['印章·光', '刻着一颗四角星。'],
@@ -123,12 +124,20 @@ function sfx(k) {
   if (k === 'bad') badN++;
   if (!ac || muted) return;
   try {
-    const seq = { click: [330], pick: [660, 880], win: [523, 659, 784, 1047], bad: [160, 120], step: [220] }[k] || [440];
-    seq.forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * .09; o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(.035, t); g.gain.exponentialRampToValueAtTime(.0005, t + .14); o.connect(g); g.connect(master); o.start(t); o.stop(t + .16); });
+    const seq = { tap: [1200], click: [330], pick: [660, 880], win: [523, 659, 784, 1047], bad: [160, 120], step: [220] }[k] || [440];
+    seq.forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * .09; o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(k === 'tap' ? .012 : .035, t); g.gain.exponentialRampToValueAtTime(.0005, t + .14); o.connect(g); g.connect(master); o.start(t); o.stop(t + .16); });
   } catch (e) {}
+}
+let alarmT = null;
+function quiet(msg) { S.f.quiet = 1; alarm(); talk([msg, { who: '温控器', t: '……安静了。谢谢。现在可以倒水了。' }]); save(); }
+function alarm() {   // 冷却井的警报：进门就响，关掉声音才停
+  const on = S.v === 'shaft' && !S.f.quiet && $('title').hidden;
+  if (on && !alarmT) alarmT = setInterval(() => { if (ac && !muted) try { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = 'square'; o.frequency.value = 1400; g.gain.setValueAtTime(.02, t); g.gain.exponentialRampToValueAtTime(.0005, t + .25); o.connect(g); g.connect(master); o.start(t); o.stop(t + .3); } catch (e) {} }, 900);
+  if (!on && alarmT) { clearInterval(alarmT); alarmT = null; }
 }
 function tone(on) { try { if (mTone) mTone.gain.setTargetAtTime(on && !muted ? .04 : 0, ac.currentTime, .005); } catch (e) {} }
 function setMute(m) {
+  if (m && S.v === 'shaft' && !S.f.quiet) setTimeout(() => quiet('你把声音关掉了。警报停了。'), 0);
   muted = m; $('bSnd').textContent = '声音：' + (m ? '关' : '开');
   try { localStorage.setItem(KEY + '-mute', m ? '1' : '0'); } catch (e) {}
   try { if (master) master.gain.value = m ? 0 : 1; if (bgm) m ? bgm.pause() : bgm.play().catch(() => {}); } catch (e) {}
@@ -168,7 +177,7 @@ const ECHO = {
 };
 function seal(k, how) {
   S.f['seal_' + k] = 1; give('seal_' + k); sfx('win');
-  talk([how, Z(praise())].concat(askPawn(k)).concat([{ fn: () => { talk([Z({ take: '记下了。赎回的东西，后舱会替你备好。', leave: '记下了。留下的东西，站里会一直替你收着。', give: '记下了。它会顺着下一班补给船出发。' }[S.ch[k]] || '记下了。')].concat(ECHO[k]())); } }]));
+  talk([how, Z(praise())].concat(k === 't' ? fact('mirror') : k === 's' ? fact('morse') : []).concat(askPawn(k)).concat([{ fn: () => { talk([Z({ take: '记下了。赎回的东西，后舱会替你备好。', leave: '记下了。留下的东西，站里会一直替你收着。', give: '记下了。它会顺着下一班补给船出发。' }[S.ch[k]] || '记下了。')].concat(ECHO[k]())); } }]));
 }
 function route() {
   const n = { take: 0, leave: 0, give: 0 };
@@ -207,6 +216,395 @@ function starGem(x, y) { const c = Math.floor(tick / 3) % 2 ? 7 : 6; px(x, y, c)
 function secret(i, x, y) { if (!S.stars.includes(i)) { starGem(x, y); hot(x - 4, y - 4, 9, 9, 'star', i, '？'); } }
 function sealIcon(k, x, y, s = 1) { const c = { t: 7, s: 12, l: 15 }[k]; r(x, y, 10 * s, 10 * s, c); r(x + s, y + s, 8 * s, 8 * s, 1); if (k === 't') { circ(x + 5 * s, y + 5 * s, 3 * s, c, false); } else if (k === 's') { for (let i = 0; i < 3; i++) r(x + 2 * s, y + (2 + i * 2.5) * s, 6 * s, s, c); } else { r(x + 4.5 * s, y + 2 * s, s, 6 * s, c); r(x + 2 * s, y + 4.5 * s, 6 * s, s, c); } }
 
+/* ================= 精致化：通用画材 ================= */
+const MT = ['#10131f', '#1a2036', '#262e4c', '#33406a', '#4a5b92', '#7084bd', '#a9b9e0'];   // 金属蓝，暗→亮
+const FL = ['#111522', '#181d30', '#20273e', '#2b3452', '#3a4568'];                        // 地板
+const RD = ['#3e1418', '#6e2228', '#a33a3a', '#d4594f', '#f08a76'];                        // 红
+const YL = ['#5c4012', '#a47a22', '#e0b246', '#f7d77a', '#fff4c4'];                        // 黄
+const CY = ['#123a44', '#1f5e6c', '#2f8a9a', '#5cc1cf', '#b4ecf2'];                        // 青
+const GR = ['#14301f', '#245238', '#3d7a52', '#62a974', '#a6dba8'];                        // 绿
+const PP = ['#efe8d2', '#d8ceb0', '#b3a684'];                                             // 纸
+function bevel(x, y, w, h, ramp, k = 2) {     // 有体积的板：左上受光，右下背光，外圈描边
+  r(x, y, w, h, ramp[k]); r(x, y, w, 1, ramp[k + 2] || ramp[k + 1]); r(x, y, 1, h, ramp[k + 1]);
+  r(x, y + h - 1, w, 1, ramp[k - 1]); r(x + w - 1, y, 1, h, ramp[k - 1]);
+}
+function rivet(x, y, ramp = MT) { px(x, y, ramp[5]); px(x + 1, y + 1, ramp[1]); px(x + 1, y, ramp[3]); px(x, y + 1, ramp[3]); }
+function soft(x, y, rad, rgb, a) { const g = ctx.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+function grate(x, y, w, h, ramp = MT) { r(x, y, w, h, ramp[0]); for (let i = 1; i < h - 1; i += 2) r(x + 1, y + i, w - 2, 1, ramp[2]); r(x, y, w, 1, ramp[3]); r(x, y + h - 1, w, 1, ramp[4]); }
+function pipeH(x, y, w, t, ramp = MT) { r(x, y, w, t, ramp[2]); r(x, y, w, 1, ramp[4]); r(x, y + t - 1, w, 1, ramp[1]); for (let i = x + 18; i < x + w; i += 46) { r(i, y - 1, 4, t + 2, ramp[3]); r(i, y - 1, 4, 1, ramp[5]); } }
+function dust(seed, x0, y0, w, h, n, c = '255,240,210') {     // 光里飘的灰尘
+  for (let i = 0; i < n; i++) { const f = rnd(seed + i), sx = f(), sy = f(), sp = .2 + f() * .5, x = x0 + ((sx * w + tick * sp * .6) % w), y = y0 + ((sy * h + Math.sin(tick * .05 + i) * 3) % h); ctx.fillStyle = `rgba(${c},${.25 + .35 * Math.abs(Math.sin(tick * .04 + i))})`; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); }
+}
+function hazard(x, y, w, h) { r(x, y, w, h, '#1a1a14'); for (let i = -h; i < w; i += 6) for (let j = 0; j < h; j++) { const xx = i + j; if (xx >= 0 && xx < w) r(x + xx, y + j, 3, 1, YL[2]); } r(x, y, w, 1, YL[3]); }
+function metalWall(top, bot, ramp = MT) {   // 金属墙：板缝、铆钉、上沿灯带、下沿护墙
+  r(0, top, W, bot - top, ramp[2]);
+  for (let x = 0; x < W; x += 40) { r(x, top, 1, bot - top, ramp[1]); r(x + 1, top, 1, bot - top, ramp[3]); rivet(x + 4, top + 6, ramp); rivet(x + 34, top + 6, ramp); rivet(x + 4, bot - 22, ramp); rivet(x + 34, bot - 22, ramp); }
+  r(0, top + 46, W, 1, ramp[1]); r(0, top + 47, W, 1, ramp[3]);
+  r(0, bot - 16, W, 16, ramp[1]); r(0, bot - 16, W, 1, ramp[4]); for (let x = 6; x < W; x += 20) r(x, bot - 11, 10, 6, ramp[0]);
+}
+function steelFloor(top, ramp = FL) {
+  r(0, top, W, H - top, ramp[2]); r(0, top, W, 2, ramp[0]);
+  for (let y = top + 10; y < H; y += 15) { r(0, y, W, 1, ramp[1]); r(0, y + 1, W, 1, ramp[3]); }
+  for (let j = 0, y = top + 2; y < H; y += 15, j++) for (let x = (j % 2) * 30; x < W; x += 60) { r(x, y, 1, 15, ramp[1]); rivet(x + 3, y + 3, MT); }
+}
+
+/* ================= 码头（精致版） ================= */
+function drawDock() {
+  // 墙、天花、地
+  metalWall(0, 120);
+  r(0, 0, W, 5, MT[0]); for (let x = 10; x < W; x += 60) { r(x, 4, 30, 3, MT[3]); r(x + 2, 5, 26, 1, YL[3]); }
+  pipeH(0, 9, W, 4); pipeH(0, 15, 96, 3, MT);
+  const blink = tick % 40 < 4; r(92, 13, 3, 3, blink ? RD[4] : RD[1]); if (blink) soft(93, 14, 8, '240,120,100', .6);
+  steelFloor(120);
+  for (let x = 4; x < W; x += 60) soft(x + 15, 6, 34, '255,236,190', .08);
+
+  // 大窗：粗框、螺栓、玻璃反光，窗外星空和小艇
+  bevel(100, 12, 120, 78, MT, 3); r(104, 16, 112, 70, MT[0]);
+  ctx.save(); ctx.beginPath(); ctx.rect(105, 17, 110, 68); ctx.clip();
+  r(105, 17, 110, 68, '#070912'); starfield(11, 60, 105, 17, 110, 68);
+  for (let i = 0; i < 6; i++) { const f = rnd(70 + i), x = 105 + ((f() * 110 - tick * (.08 + i * .02)) % 110 + 110) % 110; px(x, 17 + f() * 68, 6); }
+  circ(232 - (tick * .01) % 4, 96, 38, '#2a2350'); circ(236 - (tick * .01) % 4, 92, 34, '#3a2f6a'); circ(240, 88, 20, '#4a3d82');
+  r(105, 70, 18, 4, MT[3]); r(105, 70, 18, 1, MT[5]); r(120, 72, 10, 2, MT[2]);         // 对接臂
+  const by = Math.round(Math.sin(tick * .05) * 1);
+  r(131, 49 + by, 10, 12, MT[3]); r(131, 49 + by, 10, 1, MT[5]); r(126, 52 + by, 5, 6, MT[2]);       // 舱门和对接环
+  r(140, 44 + by, 58, 26, MT[4]); r(140, 44 + by, 58, 2, MT[6]); r(140, 68 + by, 58, 2, MT[2]); r(140, 56 + by, 58, 1, MT[3]);
+  r(198, 46 + by, 4, 22, MT[3]); r(202, 49 + by, 6, 16, MT[2]); r(202, 49 + by, 6, 1, MT[4]);        // 尾部推进器
+  const th = 2 + (tick % 6 < 3 ? 1 : 0); r(208, 52 + by, th + 2, 10, CY[3]); r(208, 54 + by, th + 4, 6, CY[4]); soft(210, 57 + by, 10, '120,220,240', .5);
+  r(146, 48 + by, 22, 8, '#0b1626'); r(147, 49 + by, 20, 6, CY[1]); line(149, 54 + by, 154, 49 + by, CY[4]); line(152, 54 + by, 157, 49 + by, CY[3]);   // 驾驶舱玻璃
+  r(172, 50 + by, 6, 5, '#0b1626'); r(181, 50 + by, 6, 5, '#0b1626'); r(173, 51 + by, 2, 2, YL[3]);
+  r(176, 60 + by, 14, 5, MT[2]); txt('07', 183, 60 + by, 5, 6, 'center', true);
+  line(160, 44 + by, 162, 37 + by, MT[5]); px(162, 36 + by, tick % 30 < 15 ? RD[4] : RD[2]);
+  ctx.restore();
+  ctx.globalAlpha = .18; for (let i = 0; i < 3; i++) line(110 + i * 9, 84, 140 + i * 9, 18, '#ffffff'); ctx.globalAlpha = 1;   // 玻璃反光
+  [[103, 15], [215, 15], [103, 85], [215, 85], [159, 13], [159, 87]].forEach(([x, y]) => rivet(x, y));
+  r(100, 90, 120, 3, MT[1]);
+  hot(130, 40, 76, 34, 'go', 'radio', '小艇');
+  secret(0, 116, 26);
+
+  // 灭火器
+  r(92, 70, 8, 22, RD[2]); r(92, 70, 2, 22, RD[3]); r(98, 70, 2, 22, RD[1]); r(93, 66, 6, 4, MT[1]); r(94, 63, 4, 3, MT[3]); line(99, 66, 102, 74, MT[0]); r(93, 78, 6, 5, PP[0]); r(94, 80, 4, 1, RD[2]);
+
+  hot(90, 62, 13, 31, 'fact', 'fire', '灭火器');
+  // 告示：胶带、标题、文字行、图钉
+  ctx.save(); ctx.translate(142, 103); ctx.rotate(-.04); ctx.translate(-142, -103);
+  r(121, 95, 44, 18, PP[2]); r(120, 94, 44, 18, PP[0]); r(120, 94, 44, 3, RD[2]); for (let i = 0; i < 4; i++) r(124, 99 + i * 3, 34 - (i % 2) * 8, 1, MT[2]);
+  r(118, 93, 6, 3, 'rgba(240,230,190,.7)'); r(158, 93, 6, 3, 'rgba(240,230,190,.7)');
+  ctx.restore();
+  hot(120, 94, 44, 18, 'look', '告示：「本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。印章不分先后。」', '告示');
+
+  // 储物柜：机身、三扇门、通风百叶、门牌、把手
+  r(12, 40, 76, 82, MT[0]); bevel(14, 42, 72, 78, MT, 2);
+  ['sail', 'fish', 'key'].forEach((k, i) => {
+    const x = 18 + i * 23, open = S.f.locker;
+    if (open) { r(x, 48, 20, 70, MT[0]); r(x + 1, 49, 18, 1, MT[2]); r(x + 2, 80, 16, 2, MT[3]); r(x + 9, 52, 2, 6, MT[4]); r(x + 4, 82, 6, 8, CY[1]); r(x + 4, 82, 6, 1, CY[3]); r(x - 3, 48, 3, 70, MT[3]); r(x - 3, 48, 1, 70, MT[5]); }
+    else {
+      bevel(x, 48, 20, 70, MT, 3); for (let j = 0; j < 4; j++) { r(x + 3, 51 + j * 3, 14, 1, MT[1]); r(x + 3, 52 + j * 3, 14, 1, MT[4]); }
+      r(x + 3, 64, 14, 14, MT[1]); r(x + 4, 65, 12, 12, '#d9d4c0'); spr(x + 5, 66, ICON[k]);
+      r(x + 15, 86, 3, 10, MT[1]); r(x + 15, 86, 2, 9, MT[5]); px(x + 15, 86, MT[6]);
+      r(x + 4, 108, 12, 6, MT[1]); txt(String(i + 1), x + 10, 108, 5, 5, 'center', true);
+    }
+  });
+  r(12, 120, 76, 3, MT[0]);
+  hot(14, 44, 72, 76, 'go', 'locker', '储物柜');
+
+  // 自动贩卖机：灯箱、玻璃柜、货、按键、故障条
+  soft(262, 122, 40, '255,190,120', .12);
+  r(238, 33, 54, 88, '#24141a'); r(234, 32, 54, 88, RD[1]); r(234, 32, 2, 88, RD[2]); r(286, 32, 2, 88, RD[0]);
+  r(236, 34, 50, 10, '#ffe7b0'); r(236, 34, 50, 1, '#fff'); txt('DRINK', 261, 35, 7, 0, 'center', true); soft(261, 39, 30, '255,220,150', .25);
+  r(239, 46, 32, 46, '#0a0d18'); for (let j = 0; j < 3; j++) { r(240, 58 + j * 14, 30, 2, MT[2]); for (let i = 0; i < 3; i++) { const x = 242 + i * 9, y = 48 + j * 14, c = [[RD[3], RD[1]], [GR[3], GR[1]], [CY[3], CY[1]], [YL[3], YL[1]], [PP[0], PP[2]]][(i + j * 2) % 5]; r(x, y, 6, 10, c[0]); r(x + 4, y, 2, 10, c[1]); r(x, y + 1, 6, 1, '#ffffff'); r(x + 1, y + 10, 4, 1, MT[4]); } }
+  ctx.globalAlpha = .25; line(242, 90, 262, 47, '#ffffff'); line(248, 90, 268, 47, '#ffffff'); ctx.globalAlpha = 1;
+  bevel(273, 46, 11, 30, MT, 2); for (let j = 0; j < 4; j++) for (let i = 0; i < 2; i++) r(275 + i * 4, 49 + j * 5, 3, 3, MT[4]); r(275, 69, 7, 3, '#0a0d18'); r(276, 70, 5, 1, YL[2]);
+  r(240, 96, 32, 14, '#0a0d18'); r(240, 96, 32, 1, MT[1]); r(242, 98, 28, 1, MT[3]);
+  ctx.save(); ctx.translate(262, 66); ctx.rotate(-.35); r(-20, -3, 40, 7, YL[3]); r(-20, -3, 40, 1, YL[4]); txt('故 障', 0, -3, 6, 0, 'center', true); ctx.restore();
+  r(234, 118, 54, 3, MT[0]);
+  hot(236, 34, 52, 86, 'vend', '', '自动贩卖机');
+
+  // 地上：警示条、线缆、窗光
+  hazard(104, 122, 112, 3);
+  ctx.globalAlpha = .07; ctx.fillStyle = '#c8dcff'; ctx.beginPath(); ctx.moveTo(104, 125); ctx.lineTo(216, 125); ctx.lineTo(236, 178); ctx.lineTo(84, 178); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#0b0d16'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(88, 122); ctx.quadraticCurveTo(70, 150, 30, 140); ctx.quadraticCurveTo(10, 136, 2, 160); ctx.stroke(); ctx.strokeStyle = MT[3]; ctx.lineWidth = .6; ctx.stroke();
+  dust(300, 104, 20, 112, 150, 18);
+  hatch('mail', '邮件室');
+}
+
+/* ================= 精致化：其余场景 ================= */
+const WD = ['#1e130c', '#332015', '#4d3120', '#6c462c', '#8f6139', '#b98450'];          // 木头
+const BR = ['#4a3410', '#7a5a1c', '#b08a30', '#d9b450', '#f6e19a'];                     // 黄铜
+const PU = ['#1c1030', '#2e1a4e', '#4a2c78', '#7450b0', '#b49ae8'];                     // 紫
+function woodFloor(top) {
+  r(0, top, W, H - top, WD[2]); r(0, top, W, 2, WD[0]);
+  for (let j = 0, y = top + 2; y < H; y += 9, j++) { r(0, y + 8, W, 1, WD[1]); for (let x = (j * 37) % 70 - 70; x < W; x += 70) { r(x, y, 1, 8, WD[1]); r(x + 1, y, 1, 8, WD[3]); } for (let x = (j * 13) % 23; x < W; x += 23) r(x, y + 3 + (x % 3), 6, 1, WD[3]); }
+}
+function lamp(x, len, warm = true) {
+  r(x, 0, 1, len, WD[0]); r(x - 6, len, 13, 4, BR[1]); r(x - 6, len, 13, 1, BR[3]); r(x - 4, len + 4, 9, 2, '#fff3c8');
+  soft(x, len + 8, 46, warm ? '255,200,120' : '190,220,255', .22);
+}
+function jar(x, y, w, h, c, glow) {
+  r(x, y + 2, w, h - 2, 'rgba(180,210,230,.25)'); r(x + 1, y + 4, w - 2, h - 6, c); r(x, y + 2, 1, h - 2, 'rgba(255,255,255,.35)'); r(x + w - 1, y + 2, 1, h - 2, 'rgba(0,0,0,.3)');
+  r(x + 1, y, w - 2, 2, WD[4]); r(x + 1, y, w - 2, 1, WD[5]); r(x + 1, y + h - 5, w - 2, 3, PP[0]); r(x + 2, y + h - 4, w - 4, 1, MT[3]);
+  if (glow) soft(x + w / 2, y + h / 2, 9, glow, .25 + .1 * Math.sin(tick * .1 + x));
+}
+
+/* ---- 当铺 ---- */
+function drawShop() {
+  r(0, 0, W, 120, '#3c1a24'); for (let x = 0; x < W; x += 8) { r(x, 6, 1, 78, '#4a2230'); r(x + 4, 6, 1, 78, '#331620'); }
+  for (let y = 14; y < 84; y += 16) for (let x = 4 + ((y / 16) % 2) * 4; x < W; x += 8) { px(x, y, '#5a2a3a'); px(x - 1, y + 1, '#5a2a3a'); px(x + 1, y + 1, '#5a2a3a'); px(x, y + 2, '#5a2a3a'); }
+  r(0, 0, W, 6, WD[1]); r(0, 5, W, 1, WD[4]); r(0, 84, W, 32, WD[2]); r(0, 84, W, 2, WD[4]); for (let x = 4; x < W; x += 40) { r(x, 90, 32, 20, WD[1]); r(x + 1, 91, 30, 18, WD[3]); r(x + 1, 91, 30, 1, WD[4]); }
+  r(0, 116, W, 4, WD[0]); woodFloor(120);
+  ctx.globalAlpha = .55; r(86, 138, 148, 30, RD[1]); ctx.globalAlpha = 1; r(88, 140, 144, 26, RD[2]); r(92, 143, 136, 20, RD[1]); for (let i = 0; i < 9; i++) { const x = 100 + i * 15; r(x, 151, 5, 5, YL[2]); px(x + 2, 150, YL[3]); px(x + 2, 156, YL[3]); } for (let i = 0; i < 34; i++) { px(88 + i * 4.3, 139, YL[1]); px(88 + i * 4.3, 166, YL[1]); }
+  lamp(104, 10); lamp(214, 10);
+
+  // 货架和罐子
+  [[148, 30], [148, 56]].forEach(([x, y]) => { r(x, y, 116, 4, WD[3]); r(x, y, 116, 1, WD[5]); r(x, y + 4, 116, 2, WD[0]); r(x + 4, y + 4, 3, 5, WD[2]); r(x + 108, y + 4, 3, 5, WD[2]); });
+  [[156, 18, 9, 12, RD[3], '255,140,120'], [168, 16, 11, 14, CY[3], 0], [182, 20, 8, 10, YL[3], '255,220,120'], [194, 14, 12, 16, PU[3], '190,150,255'], [210, 18, 9, 12, GR[3], 0], [224, 16, 10, 14, '#e8a0c8', '255,160,210'], [240, 19, 9, 11, CY[2], 0], [251, 17, 8, 13, YL[2], 0],
+   [156, 42, 10, 14, PU[3], 0], [170, 44, 9, 12, '#e8894a', '255,170,110'], [184, 41, 12, 15, CY[3], '140,220,240'], [200, 44, 9, 12, RD[3], 0], [213, 42, 10, 14, GR[3], '150,230,160'], [240, 43, 9, 13, YL[3], 0], [252, 45, 8, 11, '#e8a0c8', 0]].forEach(a => jar(...a));
+  secret(1, 229, 49);
+
+  // 座钟
+  r(14, 26, 34, 94, WD[0]); bevel(16, 28, 30, 92, WD, 3); r(14, 22, 34, 6, WD[3]); r(18, 18, 26, 5, WD[4]); r(28, 14, 6, 5, WD[4]); r(14, 22, 34, 1, WD[5]);
+  clockFace(31, 44, 11, S.clock, 6, 1); circ(31, 44, 12, BR[2], false);
+  r(22, 60, 18, 52, '#0e0a08'); r(22, 60, 18, 1, WD[1]); const sw = S.f.seal_t ? Math.round(Math.sin(tick / 3) * 4) : 0;
+  line(31, 62, 31 + sw, 96, BR[2]); circ(31 + sw, 99, 4, BR[3]); circ(31 + sw, 99, 2, BR[4]);
+  ctx.globalAlpha = .2; line(24, 108, 36, 62, '#ffffff'); ctx.globalAlpha = 1; r(16, 114, 30, 6, WD[2]);
+  hot(16, 26, 30, 94, 'go', 'clock', '座钟');
+
+  // 电码表
+  r(272, 28, 36, 48, WD[1]); r(274, 30, 32, 44, PP[0]); r(274, 30, 32, 5, RD[2]); txt('电码', 290, 30, 5, PP[0], 'center', true);
+  for (let j = 0; j < 5; j++) { r(277, 39 + j * 6, 3, 3, '#3a2a20'); for (let i = 0; i < 5; i++) { const dot = i < (j + 1); r(283 + i * 5, 40 + j * 6, dot ? 2 : 4, 1, '#3a2a20'); } }
+  r(273, 29, 3, 3, RD[3]); r(304, 29, 3, 3, RD[3]);
+  hot(274, 30, 32, 44, 'go', 'morse', '电码表');
+
+  // 档案室门
+  const open = S.f.pass && S.route === 'l';
+  r(48, 32, 28, 62, WD[0]); r(50, 34, 24, 58, open ? '#0a0806' : WD[3]); if (!open) { r(50, 34, 24, 1, WD[5]); r(52, 38, 20, 22, WD[2]); r(52, 64, 20, 24, WD[2]); r(53, 39, 18, 1, WD[4]); r(53, 65, 18, 1, WD[4]); }
+  r(54, 41, 16, 7, BR[2]); r(54, 41, 16, 1, BR[4]); txt('档案', 62, 41, 5, '#3a2410', 'center', true);
+  for (let i = 0; i < 3; i++) { r(55 + i * 5, 70, 4, 7, BR[1]); r(55 + i * 5, 70, 4, 1, BR[3]); }
+  r(69, 78, 3, 3, BR[3]);
+  hot(50, 34, 24, 58, S.route === 'l' ? 'go' : 'look', S.route === 'l' ? 'archive' : '门上的牌子写着「档案」。锁是三只拨轮。零说过，档案室不对当户开放。', '档案室');
+
+  // 柜台
+  r(54, 90, 212, 6, WD[4]); r(54, 90, 212, 1, WD[5]); r(54, 95, 212, 1, WD[1]); r(58, 96, 204, 24, WD[2]);
+  for (let x = 66; x < 258; x += 38) { r(x, 100, 32, 16, WD[1]); r(x + 1, 101, 30, 14, WD[3]); r(x + 1, 101, 30, 1, WD[4]); r(x + 2, 114, 28, 1, WD[2]); }
+  r(58, 118, 204, 2, WD[0]);
+  r(228, 84, 22, 6, '#3a1e2a'); r(229, 84, 20, 1, '#5a2e40'); r(230, 85, 18, 4, PP[0]); r(238, 85, 1, 4, PP[2]); line(246, 86, 254, 76, PP[1]);
+
+  // 天平
+  r(92, 88, 26, 4, BR[1]); r(94, 86, 22, 2, BR[2]); r(104, 60, 2, 28, BR[2]); r(105, 60, 1, 28, BR[4]); circ(105, 59, 2, BR[3]);
+  r(84, 62, 42, 2, BR[3]); r(84, 62, 42, 1, BR[4]); line(86, 64, 80, 78, BR[1]); line(86, 64, 92, 78, BR[1]); line(124, 64, 118, 78, BR[1]); line(124, 64, 130, 78, BR[1]);
+  r(78, 78, 16, 3, BR[3]); r(78, 80, 16, 1, BR[1]); r(116, 78, 16, 3, BR[3]); r(116, 80, 16, 1, BR[1]);
+  for (let i = 0; i < 3; i++) { r(81 + i * 4, 75, 3, 3, BR[4]); r(119 + i * 4, 75, 3, 3, BR[4]); }
+  hot(76, 58, 58, 36, 'go', 'scale', '天平');
+
+  // 保管箱（嵌在柜台里）
+  bevel(146, 100, 30, 16, MT, 3); r(150, 103, 22, 10, MT[2]); circ(161, 108, 4, MT[1]); circ(161, 108, 3, BR[2]); px(161, 106, BR[4]); r(167, 107, 3, 2, BR[3]);
+  hot(146, 100, 30, 16, 'box', '', '保管箱');
+  // 铃
+  r(198, 90, 20, 2, WD[1]); circ(208, 85, 6, BR[2]); r(202, 85, 13, 5, BR[2]); r(203, 82, 3, 3, BR[4]); r(207, 77, 2, 3, BR[3]); r(201, 89, 15, 1, BR[1]);
+  hot(198, 76, 20, 18, 'look', '叮。没有人来。柜台后面只有一排装着别人心事的罐子。', '铃');
+  dust(500, 70, 20, 180, 80, 14);
+  hatch('store', '库房');
+}
+
+/* ---- 温室 ---- */
+function drawGreen() {
+  r(0, 0, W, 120, '#071019'); starfield(21, 70, 0, 0, W, 116);
+  ctx.globalAlpha = .18; circ(260, 26, 30, '#3a8a6a'); ctx.globalAlpha = 1;
+  for (let x = 0; x <= W; x += 40) { r(x, 0, 3, 116, GR[1]); r(x, 0, 1, 116, GR[3]); } for (let y = 0; y < 116; y += 38) { r(0, y, W, 2, GR[1]); r(0, y, W, 1, GR[3]); }
+  for (let x = 0; x < W; x += 40) for (let y = 0; y < 116; y += 38) { ctx.globalAlpha = .07; line(x + 6, y + 34, x + 24, y + 4, '#ffffff'); ctx.globalAlpha = 1; }
+  // 生长灯
+  for (let x = 120; x < 290; x += 56) { r(x, 30, 46, 3, MT[1]); r(x + 2, 33, 42, 2, '#ff7ac0'); soft(x + 23, 38, 30, '255,120,200', .14); }
+  // 藤蔓
+  for (let k = 0; k < 7; k++) { const x0 = 8 + k * 47, len = 18 + (k * 13) % 22; for (let i = 0; i < len; i++) { const x = x0 + Math.round(Math.sin(i * .35 + k + tick * .02) * 2); px(x, 2 + i, GR[2]); if (i % 4 === 1) { px(x + 1, 2 + i, GR[3]); px(x + 2, 3 + i, GR[3]); } if (i % 4 === 3) { px(x - 1, 2 + i, GR[3]); px(x - 2, 3 + i, GR[4]); } } }
+  r(0, 116, W, 4, '#05080c'); r(0, 120, W, 60, '#2a2f2a');
+  for (let y = 120; y < H; y += 12) for (let x = ((y / 12) % 2) * 12; x < W; x += 24) { r(x, y, 23, 11, '#353b34'); r(x, y, 23, 1, '#454c43'); }
+  r(146, 160, 28, 6, MT[1]); for (let i = 0; i < 6; i++) r(148 + i * 4, 161, 2, 4, MT[0]);
+  // 玻璃幕墙（照见钟）
+  r(10, 10, 96, 100, GR[1]); bevel(12, 12, 92, 96, GR, 2); r(15, 15, 86, 90, '#1a2a3a'); r(15, 15, 86, 1, CY[2]);
+  clockFace(58, 58, 16, 500, 3, 2); ctx.globalAlpha = .25; line(22, 100, 60, 20, '#ffffff'); line(30, 100, 68, 20, '#ffffff'); line(80, 100, 98, 60, '#ffffff'); ctx.globalAlpha = 1;
+  hot(12, 12, 92, 96, 'go', 'glass', '玻璃幕墙');
+  // 花槽
+  const n = [9, 6, 5], fc = [[RD[3], RD[4]], [PU[3], PU[4]], [YL[2], YL[3]]];
+  for (let i = 0; i < 3; i++) {
+    const x = 120 + i * 56;
+    for (let k = 0; k < (S.f.water ? n[i] : 5); k++) {
+      const fx = x + 5 + (k % 5) * 8, fy = 62 + Math.floor(k / 5) * 14, sway = Math.round(Math.sin(tick * .05 + k + i) * .8);
+      if (S.f.water) { line(fx + 1, fy + 4, fx + 1 + sway, 98, GR[2]); px(fx + 2, fy + 10, GR[3]); px(fx + 3, fy + 9, GR[3]); px(fx - 1, fy + 14, GR[3]); px(fx - 2, fy + 13, GR[4]);
+        const [c, l] = fc[i]; px(fx + 1 + sway, fy - 1, c); px(fx + sway, fy, c); px(fx + 2 + sway, fy, c); px(fx + 1 + sway, fy + 2, c); px(fx - 1 + sway, fy + 1, c); px(fx + 3 + sway, fy + 1, c); px(fx + 1 + sway, fy + 1, l); px(fx + 1 + sway, fy, YL[3]); }
+      else { line(fx + 1, 84, fx + 1 + (k % 2 ? 3 : -3), 98, '#5a6a3a'); px(fx + 1 + (k % 2 ? 3 : -3), 85, '#7a6a3a'); px(fx + (k % 2 ? 4 : -4), 87, '#6a5a32'); }
+    }
+    r(x, 100, 46, 16, WD[3]); r(x, 100, 46, 1, WD[5]); r(x, 114, 46, 2, WD[1]); for (let j = 0; j < 3; j++) r(x + 1, 104 + j * 4, 44, 1, WD[2]); r(x + 2, 97, 42, 3, S.f.water ? '#2a1a10' : '#4a3424'); for (let j = 0; j < 8; j++) px(x + 4 + j * 5, 98, S.f.water ? '#3a2818' : '#5a4430');
+    r(x + 16, 106, 14, 6, PP[1]); txt(['甲', '乙', '丙'][i], x + 23, 106, 5, WD[1], 'center', true);
+    hot(x, 56, 46, 60, 'look', S.f.water ? '花开了。一槽一种颜色，朵数数得清。' : '叶子卷着，土是干的。', '花槽');
+  }
+  // 喷淋管和开关
+  pipeH(118, 24, 172, 3, MT); for (let i = 0; i < 3; i++) { r(140 + i * 56, 27, 4, 3, MT[3]); r(141 + i * 56, 30, 2, 1, MT[5]); }
+  r(298, 24, 3, 28, MT[2]); bevel(290, 50, 20, 30, MT, 3); r(294, 54, 12, 8, '#0a0d18'); px(300, 58, S.f.power ? 12 : 9); if (S.f.power) soft(300, 58, 5, '120,220,140', .5);
+  r(296, 66, 8, 10, MT[1]); r(297, S.f.water ? 67 : 71, 6, 4, S.f.water ? GR[3] : RD[3]);
+  hot(288, 48, 24, 34, 'sprinkle', '', '喷淋开关');
+  if (S.f.water) for (let i = 0; i < 3; i++) for (let k = 0; k < 7; k++) { const x = 142 + i * 56 + (k - 3) * 4, y = 31 + ((tick * 2 + k * 5) % 30); ctx.globalAlpha = .7; px(x + (k - 3) * (y - 31) / 12, y, CY[4]); ctx.globalAlpha = 1; }
+  // 通风口
+  r(246, 32, 34, 20, MT[1]); r(248, 34, 30, 16, '#05070c'); if (S.route !== 'c') for (let i = 0; i < 5; i++) { r(251 + i * 6, 34, 2, 16, MT[3]); r(251 + i * 6, 34, 1, 16, MT[5]); } else { r(248, 50, 30, 3, MT[3]); px(256, 42, 7); px(262, 42, 7); }
+  rivet(247, 33); rivet(277, 33); rivet(247, 49); rivet(277, 49);
+  hot(248, 34, 30, 16, S.route === 'c' ? 'go' : 'look', S.route === 'c' ? 'cargo' : '通风口的栅栏拧得很紧，里面黑漆漆的。', '通风口');
+  // 地上：喷壶、土袋、小盆栽
+  r(286, 100, 20, 16, CY[2]); r(286, 100, 20, 1, CY[4]); r(286, 114, 20, 2, CY[1]); r(288, 96, 6, 4, CY[2]); r(290, 94, 2, 2, CY[3]); line(306, 104, 313, 97, CY[2]); r(312, 95, 3, 3, CY[3]);
+  r(14, 126, 26, 16, '#8a7448'); r(14, 126, 26, 2, '#a89060'); r(18, 131, 18, 5, '#6a5838'); txt('土', 27, 130, 6, '#3a2a18', 'center', true);
+  [[54, 130], [74, 136]].forEach(([x, y], i) => { r(x, y + 6, 10, 8, WD[3]); r(x - 1, y + 5, 12, 2, WD[4]); for (let k = 0; k < 4; k++) { line(x + 5, y + 6, x + 1 + k * 3, y - 3 + (k % 2) * 2, GR[2 + (k % 2)]); } });
+  // 画架上的向日葵小油画（画中画）
+  line(124, 156, 129, 116, WD[2]); line(142, 156, 137, 116, WD[2]); line(133, 156, 133, 132, WD[1]); r(120, 134, 26, 2, WD[3]);
+  r(121, 115, 24, 20, WD[4]); r(122, 116, 22, 18, '#22305a'); r(122, 128, 22, 6, '#3a5a3a');
+  line(133, 133, 133, 123, GR[3]); r(130, 127, 3, 2, GR[3]);
+  if (!S.f.seed) { [[0,-4],[3,-3],[4,0],[3,3],[0,4],[-3,3],[-4,0],[-3,-3]].forEach(([dx, dy]) => r(135 + dx, 121 + dy, 2, 2, YL[3])); r(135, 120, 3, 3, '#5a3a1a'); r(137, 121, 1, 1, '#7a5a2a'); }
+  else { ctx.globalAlpha = .7; r(131, 117, 8, 12, YL[2]); r(133, 125, 4, 6, '#5a3a1a'); ctx.globalAlpha = 1; }
+  if (S.f.water && !S.f.seed) { px(124, 117 + (tick % 4), CY[4]); px(141, 119 + ((tick + 2) % 4), CY[4]); }
+  hot(119, 113, 28, 44, 'paint', '', '向日葵小画');
+  hot(14, 124, 26, 18, 'soil', '', '土箱');
+  if (S.f.sun) {   // 种下的向日葵：花盘朝东（画面右边）
+    line(27, 126, 27, 100, GR[3]); r(22, 112, 5, 3, GR[4]); r(28, 106, 5, 3, GR[4]);
+    for (let i = 0; i < 12; i++) { const t = i / 12 * 6.283; r(30 + Math.round(Math.cos(t) * 5) - 1, 98 + Math.round(Math.sin(t) * 5) - 1, 3, 3, i % 2 ? YL[2] : YL[3]); }
+    r(28, 96, 5, 5, '#5a3a1a'); r(31, 97, 2, 2, '#8a6a3a');
+  }
+  if (S.f.water) { ctx.globalAlpha = .25; r(150, 170, 40, 2, CY[3]); r(200, 166, 26, 2, CY[3]); ctx.globalAlpha = 1; }
+  if (S.f.cat && S.route !== 'c') { catAt(100, 108); hot(98, 104, 20, 16, 'pet', '', '螺丝'); }
+  dust(700, 118, 30, 170, 80, 16, '200,255,210');
+  hatch('nursery', '苗圃');
+}
+
+/* ---- 观星台 ---- */
+function drawObs() {
+  r(0, 0, W, 120, '#0c0f22'); for (let x = 0; x < W; x += 36) { r(x, 0, 1, 120, '#151a36'); }
+  [[18, 96], [300, 20], [310, 70], [6, 12]].forEach(([x, y]) => { px(x, y, MT[5]); px(x + 3, y + 2, MT[4]); });
+  // 穹顶窗
+  r(48, 4, 224, 86, MT[1]); bevel(50, 6, 220, 82, MT, 3);
+  ctx.save(); ctx.beginPath(); ctx.rect(56, 12, 208, 70); ctx.clip();
+  const g = ctx.createLinearGradient(56, 12, 264, 82); g.addColorStop(0, '#0a0820'); g.addColorStop(.5, '#1a1240'); g.addColorStop(1, '#081a2a'); ctx.fillStyle = g; ctx.fillRect(56, 12, 208, 70);
+  ctx.globalAlpha = .35; for (let i = 0; i < 40; i++) { const f = rnd(900 + i), x = 56 + i * 5.3, y = 30 + Math.sin(i * .4) * 12 + f() * 8; soft(x, y, 7 + f() * 6, i % 3 ? '120,90,200' : '80,170,200', .3); } ctx.globalAlpha = 1;
+  starfield(31, 150, 56, 12, 208, 70); for (let i = 0; i < 6; i++) { const f = rnd(40 + i), x = 60 + f() * 200, y = 16 + f() * 60; if ((tick + i * 7) % 20 < 10) { px(x, y, 6); px(x - 1, y, 4); px(x + 1, y, 4); px(x, y - 1, 4); px(x, y + 1, 4); } }
+  const ss = (tick % 160); if (ss < 14) { for (let k = 0; k < 8; k++) { ctx.globalAlpha = 1 - k / 8; px(230 - ss * 8 + k * 2, 18 + ss * 2 - k / 2, 6); } ctx.globalAlpha = 1; }
+  ctx.restore();
+  for (let x = 108; x < 264; x += 52) { r(x, 12, 2, 70, MT[2]); r(x, 12, 1, 70, MT[4]); }
+  [[54, 10], [264, 10], [54, 82], [264, 82]].forEach(([x, y]) => rivet(x, y));
+  if (!S.stars.includes(2)) { if (S.f.ttl) starGem(236, 24); hot(232, 20, 9, 9, 'star', 2, S.f.ttl ? '？' : null); if (!S.f.ttl) hots[hots.length - 1].hide = 1; }
+  // 星图
+  r(8, 24, 40, 58, WD[1]); r(10, 26, 36, 54, '#1a2a4a'); for (let i = 1; i < 6; i++) { r(10, 26 + i * 9, 36, 1, '#24365a'); r(10 + i * 6, 26, 1, 54, '#24365a'); }
+  [[16, 36], [26, 34], [36, 40], [20, 52], [30, 56], [38, 66], [18, 68]].forEach(([x, y]) => { px(x, y, YL[3]); }); line(16, 36, 26, 34, '#5a7ab0'); line(20, 52, 30, 56, '#5a7ab0');
+  r(10, 26, 36, 4, '#24365a'); txt('星图', 28, 26, 4, PP[0], 'center', true); r(9, 25, 2, 2, RD[3]); r(45, 25, 2, 2, RD[3]);
+  hot(10, 26, 36, 54, 'go', 'chart', '星图');
+  // 地板与转台
+  r(0, 116, W, 4, '#05070f'); steelFloor(120, ['#0e1122', '#151a30', '#1c2240', '#262e52', '#33406a']);
+  ctx.strokeStyle = '#33406a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(166, 140, 56, 14, 0, 0, 6.3); ctx.stroke(); ctx.strokeStyle = '#4a5b92'; ctx.beginPath(); ctx.ellipse(166, 140, 40, 10, 0, 0, 6.3); ctx.stroke();
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; px(166 + Math.cos(a) * 56, 140 + Math.sin(a) * 14, YL[2]); }
+  // 望远镜
+  r(146, 116, 28, 4, MT[1]); line(160, 110, 146, 120, MT[3], 2); line(160, 110, 174, 120, MT[3], 2); line(160, 110, 160, 121, MT[2], 2); r(156, 104, 8, 8, MT[3]);
+  r(158, 80, 4, 26, MT[4]); r(158, 80, 1, 26, MT[6]);
+  line(140, 100, 190, 52, MT[2], 7); line(141, 99, 189, 51, MT[4], 3); line(142, 98, 188, 50, MT[6], 1);
+  [[150, 91], [166, 76], [180, 62]].forEach(([x, y]) => { line(x - 3, y - 3, x + 3, y + 3, BR[3], 2); });
+  r(185, 44, 12, 12, MT[3]); r(185, 44, 12, 1, MT[5]); r(136, 98, 6, 8, MT[2]); r(134, 104, 4, 3, MT[1]);
+  if (S.f.lens) { r(187, 46, 8, 8, CY[3]); r(188, 47, 3, 3, CY[4]); soft(191, 50, 6, '140,230,255', .4); }
+  line(150, 92, 138, 88, MT[3]); r(130, 84, 8, 8, MT[1]);
+  hot(132, 44, 68, 76, 'go', 'tele', '望远镜');
+  // 控制台
+  r(240, 82, 68, 38, MT[0]); bevel(244, 84, 60, 34, MT, 3); r(248, 87, 12, 8, '#06140a'); for (let i = 0; i < 3; i++) r(249, 88 + i * 2, 4 + ((tick / 3 + i) % 8), 1, GR[3]);
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { const x = 264 + i * 8, y = 92 + j * 8; circ(x, y, 2, MT[1]); px(x, y, S.f.seal_l ? 7 : 5); if (S.f.seal_l) soft(x, y, 4, '255,220,120', .4); }
+  r(290, 92, 8, 4, S.f.seal_l ? 12 : 9); for (let i = 0; i < 3; i++) { circ(250 + i * 6, 108, 2, MT[4]); px(250 + i * 6, 107, MT[6]); }
+  ctx.strokeStyle = '#1a1f36'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(250, 118); ctx.quadraticCurveTo(244, 132, 228, 128); ctx.stroke(); ctx.strokeStyle = RD[2]; ctx.beginPath(); ctx.moveTo(262, 118); ctx.quadraticCurveTo(258, 136, 236, 136); ctx.stroke();
+  hot(244, 84, 60, 34, 'go', 'console', '控制台');
+  hatch('bunk', '休息舱');
+}
+
+/* ---- 机房 ---- */
+function drawCore() {
+  metalWall(0, 120, ['#0a0c14', '#11141f', '#181c2c', '#22283e', '#30395a', '#4a5684', '#7080b0']);
+  pipeH(0, 38, 90, 4); pipeH(232, 38, 88, 4);
+  // 机柜
+  for (let i = 0; i < 7; i++) {
+    const x = 84 + i * 22; bevel(x, 4, 20, 34, MT, 2); r(x + 2, 6, 16, 30, '#07090f');
+    for (let j = 0; j < 6; j++) { r(x + 3, 8 + j * 5, 14, 3, MT[1]); const on = S.f.power ? ((i * 3 + j + Math.floor(tick / 2)) % 4) : -1; px(x + 4, 9 + j * 5, on === 0 ? YL[3] : on > 0 ? GR[3] : '#1a2a1a'); px(x + 6, 9 + j * 5, on === 1 ? RD[3] : '#2a1a1a'); r(x + 9, 9 + j * 5, 6, 1, MT[3]); }
+  }
+  // 线缆垂下来
+  [[92, '#1a2238'], [100, RD[1]], [222, '#1a2238'], [230, CY[1]]].forEach(([x, c], k) => { ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, 38); ctx.quadraticCurveTo(x + (k < 2 ? 30 : -30), 90, x + (k < 2 ? 46 : -46), 118); ctx.stroke(); });
+  // 零
+  const P = S.f.power, pu = P ? Math.round(Math.sin(tick / 4) * 1.5) : 0;
+  r(146, 92, 28, 28, MT[2]); r(146, 92, 28, 1, MT[4]); for (let i = 0; i < 4; i++) r(150, 98 + i * 5, 20, 2, MT[0]); r(140, 116, 40, 4, MT[1]);
+  if (P) soft(160, 70, 46, '110,200,255', .25);
+  circ(160, 70, 24 + pu, MT[1]); circ(160, 70, 22 + pu, MT[3]); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + (P ? tick * .02 : 0); px(160 + Math.cos(a) * 20, 70 + Math.sin(a) * 20, P ? CY[4] : MT[2]); }
+  circ(160, 70, 17, '#081420'); circ(160, 70, 13, P ? CY[2] : '#16202e'); circ(160, 70, 9, P ? CY[3] : '#1a2838'); circ(160, 70, 5, P ? CY[4] : '#223040');
+  const ex = P ? Math.round(Math.sin(tick / 9) * 2) : 0; circ(160 + ex, 70, 2, P ? '#ffffff' : MT[3]); px(157 + ex, 67, '#ffffff');
+  hot(134, 44, 52, 76, 'ai', '', '零');
+  if (S.route === 'z') { r(151, 100, 18, 14, S.f.pass ? MT[1] : CY[2]); r(153, 103, 14, 2, MT[0]); r(153, 107, 14, 2, MT[0]); hot(148, 97, 24, 20, 'go', 'inner', '主机日志'); }
+  // 配电柜
+  r(24, 42, 50, 64, MT[0]); bevel(26, 44, 46, 60, MT, 2); r(30, 48, 38, 52, MT[1]);
+  spr(42, 58, ['..77.', '.77..', '7777.', '..77.', '.77..', '77...'], 3);
+  r(30, 92, 38, 6, YL[2]); hazard(30, 92, 38, 6); px(66, 50, S.f.power ? 12 : 9); if (S.f.power) soft(66, 50, 5, '120,220,140', .6);
+  for (let i = 0; i < 3; i++) { r(32 + i * 6, 50, 4, 6, MT[3]); r(32 + i * 6, S.f.power ? 50 : 53, 4, 3, MT[5]); }
+  hot(26, 44, 46, 60, 'go', 'tiles', '配电板');
+  // 舱门
+  r(200, 52, 44, 68, MT[0]); hazard(200, 52, 44, 4); r(200, 52, 4, 68, YL[2]); r(240, 52, 4, 68, YL[2]); for (let y = 52; y < 120; y += 8) { r(200, y, 4, 4, '#1a1a14'); r(240, y + 4, 4, 4, '#1a1a14'); }
+  bevel(204, 56, 36, 64, MT, 3); r(206, 58, 32, 60, S.f.gate ? '#0a0806' : MT[2]);
+  ['t', 's', 'l'].forEach((k, i) => { r(210 + i * 9, 63, 7, 7, MT[0]); r(211 + i * 9, 64, 5, 5, S.f.gate ? [7, 12, 15][i] : (S.f['seal_' + k] ? [7, 12, 15][i] : '#0a0a10')); if (S.f['seal_' + k]) soft(213 + i * 9, 66, 5, '255,230,150', .3); });
+  if (!S.f.gate) { circ(222, 92, 9, MT[3], false); circ(222, 92, 8, MT[4], false); line(214, 92, 230, 92, MT[4]); line(222, 84, 222, 100, MT[4]); circ(222, 92, 2, MT[5]); }
+  else { ctx.globalAlpha = .5; r(210, 80, 24, 38, 8); ctx.globalAlpha = 1; soft(222, 100, 24, '255,180,100', .3); }
+  hot(204, 56, 36, 64, 'gate', '', '舱门');
+  // 保险柜
+  r(254, 58, 48, 64, MT[0]); bevel(256, 60, 44, 60, ['#141008', '#241c10', '#3a2e1c', '#54442a', '#76603c', '#a08658'], 2); r(262, 68, 32, 44, S.f.seal_s ? '#0a0806' : '#3a2e1c');
+  if (!S.f.seal_s) { circ(278, 90, 9, '#241c10'); circ(278, 90, 7, BR[2]); circ(278, 90, 5, BR[1]); for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; px(278 + Math.cos(a) * 7, 90 + Math.sin(a) * 7, BR[4]); } r(277, 84, 2, 5, BR[4]); r(284, 70, 8, 10, '#0a0806'); r(285, 71, 6, 1, YL[2]); r(264, 100, 3, 8, BR[3]); }
+  [[258, 62], [298, 62], [258, 116], [298, 116]].forEach(([x, y]) => rivet(x, y));
+  hot(256, 60, 44, 60, 'go', 'vault', '保险柜');
+  r(0, 116, W, 4, '#05060a'); steelFloor(120, ['#0a0c16', '#10131f', '#161a2a', '#1e2338', '#2a3150']);
+  if (P) { ctx.globalAlpha = .12; ctx.fillStyle = '#6ec8ff'; ctx.beginPath(); ctx.ellipse(160, 132, 50, 8, 0, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; }
+  if (P) dust(900, 120, 40, 90, 70, 10, '160,220,255');
+  hatch('shaft', '冷却井');
+  dimIf(!S.f.power);
+}
+
+/* ---- 后舱 ---- */
+function drawBack() {
+  const E = S.f.end;
+  r(0, 0, W, 130, E ? '#3a1828' : '#140c14'); for (let x = 0; x < W; x += 20) r(x, 0, 1, 130, E ? '#4a2234' : '#1c1220');
+  if (E) { soft(160, 80, 130, '255,170,110', .28); soft(160, 80, 60, '255,210,140', .25); }
+  // 窗
+  r(92, 22, 136, 68, WD[1]); bevel(94, 24, 132, 64, WD, 3); r(100, 30, 120, 52, '#05050c'); starfield(41, 50, 100, 30, 120, 52); r(159, 30, 2, 52, WD[2]); r(100, 55, 120, 2, WD[2]);
+  ctx.globalAlpha = .18; line(104, 80, 124, 32, '#ffffff'); line(168, 80, 188, 32, '#ffffff'); ctx.globalAlpha = 1;
+  // 彩灯和小旗
+  ctx.strokeStyle = '#2a1a20'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(4, 12); ctx.quadraticCurveTo(80, 30, 160, 14); ctx.quadraticCurveTo(240, 30, 316, 12); ctx.stroke();
+  for (let i = 0; i < 20; i++) { const t = i / 19, x = 4 + t * 312, y = t < .5 ? 12 + Math.sin(t * 2 * Math.PI) * 9 : 12 + Math.sin((t - .5) * 2 * Math.PI) * 9; const c = [RD[3], YL[3], CY[3], GR[3], '#ff9ad0'][i % 5], on = (Math.floor(tick / 6) + i) % 3; r(x - 1, y + 1, 3, 3, on ? c : '#2a1a20'); if (on && E) soft(x, y + 2, 6, '255,220,160', .3); }
+  const word = '生日快乐'; for (let i = 0; i < 4; i++) { const x = 24 + i * 14, y = 34 + i * 2; ctx.fillStyle = [RD[2], YL[2], CY[2], GR[2]][i]; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 12, y); ctx.lineTo(x + 6, y + 13); ctx.fill(); txt(word[i], x + 6, y + 1, 6, PP[0], 'center', true); }
+  for (let i = 0; i < 4; i++) { const x = 244 + i * 14, y = 40 - i * 2; ctx.fillStyle = [GR[2], CY[2], YL[2], RD[2]][i]; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 12, y); ctx.lineTo(x + 6, y + 13); ctx.fill(); }
+  // 墙上的照片框和小架子
+  r(28, 60, 30, 24, WD[3]); r(30, 62, 26, 20, '#2a3a4a'); r(32, 74, 22, 6, GR[2]); circ(48, 68, 3, YL[3]);
+  r(250, 66, 50, 3, WD[4]); r(254, 58, 6, 8, CY[3]); r(264, 56, 4, 10, PP[0]); r(272, 60, 10, 6, RD[2]); r(288, 54, 6, 12, GR[3]);
+  // 地
+  woodFloor(130); ctx.globalAlpha = .7; ctx.fillStyle = '#5a2a3a'; ctx.beginPath(); ctx.ellipse(160, 158, 90, 16, 0, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = YL[1]; ctx.beginPath(); ctx.ellipse(160, 158, 84, 13, 0, 0, 6.3); ctx.stroke();
+  // 桌子和桌布
+  r(88, 120, 144, 6, WD[4]); r(88, 120, 144, 1, WD[5]); r(98, 126, 6, 42, WD[2]); r(216, 126, 6, 42, WD[2]); r(98, 126, 1, 42, WD[4]);
+  r(92, 117, 136, 5, PP[0]); for (let x = 92; x < 228; x += 8) { r(x, 122, 4, 4, PP[0]); px(x + 1, 125, PP[2]); }
+  // 蛋糕
+  r(126, 116, 68, 3, '#dcd8e8'); r(126, 116, 68, 1, '#ffffff');
+  r(132, 98, 56, 18, '#f6e4d0'); r(132, 98, 56, 1, '#fff6ea'); r(132, 108, 56, 3, '#e8a0b8'); for (let i = 0; i < 7; i++) { r(134 + i * 8, 98, 4, 3 + (i % 2) * 2, '#e8a0b8'); }
+  r(142, 84, 36, 14, '#fff0e0'); r(142, 84, 36, 1, '#ffffff'); r(142, 92, 36, 2, '#e8a0b8'); for (let i = 0; i < 5; i++) r(144 + i * 7, 84, 3, 2 + (i % 2) * 2, '#e8a0b8');
+  [[146, 82], [174, 82], [136, 96], [184, 96]].forEach(([x, y]) => { r(x - 2, y - 1, 4, 3, RD[3]); px(x - 1, y - 1, RD[4]); px(x, y - 2, GR[3]); });
+  const n = 1 + S.stars.length;
+  for (let i = 0; i < n; i++) { const x = 160 - (n - 1) * 4 + i * 8; r(x - 1, 74, 2, 10, [CY[3], PU[3], GR[3], YL[2]][i]); r(x - 1, 74, 1, 10, '#ffffff'); if (E) { r(x - 1, 70 - (tick % 2), 2, 3, YL[3]); px(x - 1 + (tick % 2), 69 - (tick % 2), '#ffffff'); soft(x, 70, 8, '255,210,120', .5); } }
+  hot(124, 66, 72, 58, 'cake', '', '蛋糕');
+  r(70, 132, 14, 4, WD[3]); r(70, 112, 3, 22, WD[2]); r(70, 112, 14, 3, WD[3]); r(82, 136, 2, 26, WD[2]); r(70, 136, 2, 26, WD[2]);
+  dust(1100, 90, 20, 140, 100, 10, '255,230,200');
+}
+
+/* ================= 冷知识（已审核） ================= */
+const FACTS = {
+  fire: ['灭火器', '在空间站里点蜡烛，火焰是一颗蓝色的球。地面上热空气往上走、冷空气补进来，才把火焰拉成水滴形；失重的时候没有这种对流。', '火焰的形状，是重力给的。'],
+  mirror: ['镜子', '镜子其实没有把左右对调，它对调的是前后。我们觉得左右反了，是因为下意识想象自己转了个身，走进了镜子里。', '很多「反过来」，是我们自己的视角造成的。'],
+  morse: ['电码', '电码里 E 只有一个点，是因为莫尔斯的合作者阿尔弗雷德·维尔去报社数了铅字盒：哪个字母的铅字备得最多，就给它最短的码。电码的大部分功劳，其实是维尔的。', '常用的短、罕用的长，今天的压缩算法也是这个思路。'],
+  power: ['电', '铜线里的电子，平均每秒只往前挪零点几毫米，比钟的分针还慢。灯一开就亮，是因为推着它们走的电磁信号，以接近光速沿着导线传了过去。', '「电」和「电子」跑的不是一个速度。'],
+  cat: ['猫', '猫尝不出甜味。甜味受体是两个基因造的蛋白拼起来的，猫科动物的其中一个基因早就坏掉了，老虎、猎豹也一样。', '螺丝把草莓放到你的蛋糕上，不是因为馋。'],
+  sun: ['向日葵', '只有还在长个子的向日葵会追着太阳转。开花以后，它们就固定朝东了：朝东的花早上暖得快，引来的传粉昆虫是朝西的五倍。', '「向日葵一直追着太阳」，只对了一半。']
+};
+function fact(k, who = Z) {
+  const f = FACTS[k]; if (!f) return [];
+  const first = !S.facts.includes(k); if (first) S.facts.push(k);
+  return [who('（冷知识 · ' + f[0] + '）' + f[1]), who(f[2] + (first ? '　　（已记进笔记的「收获」页，' + S.facts.length + ' / ' + Object.keys(FACTS).length + '）' : ''))];
+}
+
 /* ================= 场景 ================= */
 const V = {};
 const reg = (id, o) => { V[id] = o; };
@@ -242,118 +640,29 @@ reg('map', { name: '全站地图', desc: () => '零号站的结构图。五个�
   } });
 
 reg('dock', { name: '码头', parent: 'map', desc: () => '你的小艇泊在窗外。左边一排储物柜，右边一台贴着「故障」的自动贩卖机。',
-  draw() {
-    room(2, 1, 1, 0);
-    r(104, 16, 112, 70, 3); r(108, 20, 104, 62, 0); starfield(11, 40, 108, 20, 104, 62);
-    r(138, 44, 56, 26, 4); r(138, 44, 56, 3, 5); r(130, 52, 8, 10, 4); r(194, 50, 10, 14, 3); r(148, 52, 14, 8, 1); r(149, 53, 5, 3, 5); r(170, 52, 14, 8, 1); px(204, 56, 8 + (tick % 4 < 2 ? 0 : -1));
-    hot(130, 40, 76, 34, 'go', 'radio', '小艇');
-    secret(0, 116, 26);
-    r(120, 94, 44, 18, 14); r(122, 96, 40, 14, 6); for (let i = 0; i < 4; i++) r(125, 98 + i * 3, 30 - i * 5, 1, 2); hot(120, 94, 44, 18, 'look', '告示：「本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。印章不分先后。」', '告示');
-    r(14, 44, 72, 76, 3); r(14, 44, 72, 2, 4);
-    ['sail', 'fish', 'key'].forEach((k, i) => { r(18 + i * 23, 50, 20, 66, S.f.locker ? 1 : 2); r(18 + i * 23, 50, 20, 1, 4); if (!S.f.locker) { spr(23 + i * 23, 58, ICON[k]); r(34 + i * 23, 86, 2, 6, 5); } });
-    hot(14, 44, 72, 76, 'go', 'locker', '储物柜');
-    r(236, 34, 52, 86, 9); r(236, 34, 52, 3, 8); r(241, 42, 30, 46, 1); for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) r(244 + i * 9, 46 + j * 14, 6, 9, [7, 12, 5, 15, 8][(i + j * 2) % 5]);
-    r(275, 46, 9, 14, 0); r(277, 50, 5, 2, 7); r(244, 96, 30, 14, 0); if (S.f.vend && !S.f.fuseTaken) r(252, 102, 12, 4, 5);
-    hot(236, 34, 52, 86, 'vend', '', '自动贩卖机');
-    hatch('mail', '邮件室');
-  },
+  draw() { drawDock(); },
   hint: () => [S.f.locker ? (S.f.power ? '小艇里的收音机有三个频道。通电浇花以后，温室的花会告诉你先听哪一个。' : '码头这里暂时没有别的事了。机房还没通电。') : '储物柜门上画着三个图案。这些图案在观星台的星图上也有。',
     S.f.locker ? '收音机的三个频道各播一个数字。温室三槽花的颜色，从左到右，就是三个数字的顺序。' : '数一数星图上每个星座有几颗星，按柜门图案的顺序拨进去。'] });
 
 reg('shop', { name: '当铺', parent: 'map', desc: () => '柜台上摆着一台天平。墙角立着一座停了的座钟，另一面墙上贴着一张电码表。',
-  draw() {
-    room(10, 0, 13, 0);
-    r(150, 30, 110, 3, 14); r(150, 56, 110, 3, 14);
-    [[156, 7], [170, 12], [184, 5], [200, 15], [216, 8], [234, 9], [246, 4]].forEach(([x, c], i) => { r(x, 18 + (i % 2) * 2, 8, 12 - (i % 2) * 2, c); r(x + 1, 16 + (i % 2) * 2, 6, 2, 6); });
-    [[158, 4], [176, 15], [192, 7], [212, 12], [240, 8]].forEach(([x, c]) => { r(x, 44, 10, 12, c); r(x + 2, 42, 6, 2, 13); });
-    secret(1, 229, 49);
-    r(16, 26, 30, 94, 13); r(16, 26, 30, 2, 14); clockFace(31, 44, 11, S.clock, 6, 1); r(24, 62, 14, 50, 0); line(31, 62, 31 + (S.f.seal_t ? Math.round(Math.sin(tick / 3) * 4) : 0), 96, 7); circ(31 + (S.f.seal_t ? Math.round(Math.sin(tick / 3) * 4) : 0), 98, 3, 7);
-    hot(16, 26, 30, 94, 'go', 'clock', '座钟');
-    r(274, 30, 32, 44, 6); r(274, 30, 32, 6, 14); for (let j = 0; j < 5; j++) { r(278, 40 + j * 6, 3, 2, 0); for (let i = 0; i < 3; i++) r(284 + i * 6, 40 + j * 6, (i + j) % 2 ? 4 : 2, 2, 13); }
-    hot(274, 30, 32, 44, 'go', 'morse', '电码表');
-    r(56, 92, 208, 4, 14); r(60, 96, 200, 24, 13); r(60, 96, 200, 1, 0); for (let x = 70; x < 260; x += 38) r(x, 100, 30, 16, 10);
-    r(104, 60, 2, 30, 7); r(84, 62, 42, 2, 7); line(86, 64, 80, 78, 14); line(86, 64, 92, 78, 14); line(124, 64, 118, 78, 14); line(124, 64, 130, 78, 14); r(78, 78, 16, 3, 7); r(116, 78, 16, 3, 7); r(96, 88, 18, 4, 14);
-    hot(76, 58, 58, 36, 'go', 'scale', '天平');
-    r(50, 34, 24, 58, 0); r(52, 36, 20, 56, S.f.pass && S.route === 'l' ? 0 : 13); r(54, 40, 16, 6, 6); r(56, 42, 12, 1, 0); r(56, 44, 8, 1, 0); for (let i = 0; i < 3; i++) r(56 + i * 4, 62, 3, 6, 7);
-    hot(50, 34, 24, 58, S.route === 'l' ? 'go' : 'look', S.route === 'l' ? 'archive' : '门上的牌子写着「档案」。锁是三只拨轮。零说过，档案室不对当户开放。', '档案室');
-    r(146, 100, 30, 16, 14); r(146, 100, 30, 1, 7); r(157, 106, 8, 5, 7); r(160, 108, 2, 2, 0); hot(146, 100, 30, 16, 'box', '', '保管箱');
-    r(200, 82, 16, 10, 7); r(204, 78, 8, 4, 7); hot(198, 76, 20, 18, 'look', '叮。没有人来。柜台后面只有一排装着别人心事的罐子。', '铃');
-    hatch('store', '库房');
-  },
+  draw() { drawShop(); },
   hint: () => [!S.f.scale ? '天平上有九枚硬币，其中一枚不一样。' : !S.f.seal_t ? '座钟停了。温室里有一面能照见钟的玻璃。' : '电码表先记着，听收音机的时候用得上。', '当铺里能做的事：称硬币、拨座钟、看电码表。'] });
 
 reg('green', { name: '温室', parent: 'map', desc: () => '三只花槽，一整面玻璃幕墙。' + (S.f.water ? '花开了。' : '植物蔫着，喷淋的开关在右边墙上。'),
-  draw() {
-    r(0, 0, W, 120, 1); for (let x = 0; x < W; x += 32) r(x, 0, 2, 120, 11); r(0, 30, W, 2, 11); r(0, 116, W, 4, 0); r(0, 120, W, 60, 13); for (let y = 130; y < H; y += 12) r(0, y, W, 1, 0);
-    starfield(21, 30, 110, 0, 210, 28);
-    r(12, 12, 92, 96, 11); r(15, 15, 86, 90, 2); r(15, 15, 86, 1, 4); line(22, 100, 60, 20, 3); line(30, 100, 68, 20, 3);
-    clockFace(58, 58, 16, 500, 3, 2); hot(12, 12, 92, 96, 'go', 'glass', '玻璃幕墙');
-    const n = [9, 6, 5], fc = [9, 15, 7];
-    for (let i = 0; i < 3; i++) {
-      const x = 120 + i * 56;
-      r(x, 100, 46, 16, 14); r(x, 100, 46, 2, 8); r(x + 2, 98, 42, 2, 13);
-      for (let k = 0; k < (S.f.water ? n[i] : 5); k++) {
-        const fx = x + 5 + (k % 5) * 8, fy = 62 + Math.floor(k / 5) * 14;
-        if (S.f.water) { line(fx + 1, fy + 3, fx + 1, 98, 11); r(fx, fy, 3, 3, fc[i]); px(fx + 1, fy + 1, 6); px(fx - 1, fy + 6, 12); }
-        else { line(fx + 1, 84, fx + 1 + (k % 2 ? 2 : -2), 98, 13); px(fx + 1 + (k % 2 ? 2 : -2), 86, 14); }
-      }
-      hot(x, 56, 46, 60, 'look', S.f.water ? '花开了。一槽一种颜色，朵数数得清。' : '叶子卷着，土是干的。', '花槽');
-    }
-    r(292, 52, 16, 26, 2); r(294, 54, 12, 8, 0); px(300, 58, S.f.power ? 12 : 9); r(296, 66, 8, 8, S.f.water ? 12 : 9); hot(288, 48, 24, 34, 'sprinkle', '', '喷淋开关');
-    if (S.f.water && tick % 6 < 3) for (let i = 0; i < 12; i++) px(126 + i * 14 + (tick % 3), 40 + (i * 7 + tick * 3) % 18, 5);
-    r(248, 34, 30, 16, 0); if (S.route !== 'c') for (let i = 0; i < 5; i++) r(251 + i * 6, 34, 2, 16, 3); else { r(248, 50, 30, 3, 3); px(256, 42, 7); px(262, 42, 7); }
-    hot(248, 34, 30, 16, S.route === 'c' ? 'go' : 'look', S.route === 'c' ? 'cargo' : '通风口的栅栏拧得很紧，里面黑漆漆的。', '通风口');
-    if (S.f.cat && S.route !== 'c') { catAt(100, 108); hot(98, 104, 20, 16, 'pet', '', '螺丝'); }
-    r(286, 100, 20, 16, 4); r(288, 96, 6, 4, 4); line(306, 104, 312, 98, 4);
-    hatch('nursery', '苗圃');
-  },
+  draw() { drawGreen(); },
   hint: () => [!S.f.seal_t ? '玻璃上映着走廊里的钟。镜子里的东西是反的。' : S.f.water ? '三槽花的颜色，从左到右，记下来。小艇的收音机上有三盏同样颜色的灯。' : '喷淋要通电才转。电在机房。', !S.f.seal_t ? '玻璃里是 8 点 20 分，左右翻回来是 3 点 40 分。去当铺拨座钟。' : '从左到右是红、紫、黄。保险柜的三位数，就按这个顺序听收音机的三个频道。'] });
 
 reg('obs', { name: '观星台', parent: 'map', desc: () => '穹顶外是一整片星空。一架望远镜，一张星图，一台布满插孔的控制台。',
-  draw() {
-    room(1, 0, 2, 1);
-    r(52, 8, 216, 78, 3); r(56, 12, 208, 70, 0); starfield(31, 110, 56, 12, 208, 70); for (let x = 108; x < 264; x += 52) r(x, 12, 1, 70, 2);
-    secret(2, 236, 24);
-    r(10, 26, 36, 54, 5); r(10, 26, 36, 3, 4); [[16, 36], [26, 34], [36, 40], [20, 52], [30, 56], [38, 66], [18, 68]].forEach(([x, y]) => px(x, y, 1)); line(16, 36, 26, 34, 4); line(20, 52, 30, 56, 4);
-    hot(10, 26, 36, 54, 'go', 'chart', '星图');
-    r(146, 110, 28, 8, 3); r(158, 80, 4, 30, 4); line(140, 100, 190, 52, 4, 6); line(142, 99, 190, 51, 5, 2); r(186, 46, 10, 10, 3); r(136, 98, 6, 8, 3); if (S.f.lens) r(188, 48, 6, 6, 5);
-    hot(132, 44, 68, 76, 'go', 'tele', '望远镜');
-    r(244, 84, 60, 34, 3); r(244, 84, 60, 2, 4); for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) px(264 + i * 8, 92 + j * 8, S.f.seal_l ? 7 : 5); r(290, 92, 8, 4, S.f.seal_l ? 12 : 9);
-    hot(244, 84, 60, 34, 'go', 'console', '控制台');
-    hatch('bunk', '休息舱');
-  },
-  hint: () => [!S.f.locker ? '星图上有三个星座。码头储物柜的门上也有这三个图案。' : !S.f.lens ? '储物柜里的镜片该装回望远镜了。' : '控制台要你把看到的星座连出来。注意镜筒上的铭牌。', !S.f.seal_l ? '望远镜里的画面上下左右都是反的。把看到的图形转半圈再连。' : '观星台的事办完了。'] });
+  draw() { drawObs(); },
+  hint: () => S.f.seal_l && !S.stars.includes(2) ? ['这一题要动的是网页本身：看一眼浏览器标签页上的标题。', (S.f.ttl = 1, '标签页上写着：穹顶玻璃右上角，有一颗星不在星图上。现在它亮出来了。')] : [!S.f.locker ? '星图上有三个星座。码头储物柜的门上也有这三个图案。' : !S.f.lens ? '储物柜里的镜片该装回望远镜了。' : '控制台要你把看到的星座连出来。注意镜筒上的铭牌。', !S.f.seal_l ? '望远镜里的画面上下左右都是反的。把看到的图形转半圈再连。' : '观星台的事办完了。'] });
 
 reg('core', { name: '机房', parent: 'map', desc: () => S.f.power ? '主机的光稳定下来了。零在看着你。' : '机房里很暗。中间的主机只剩一点微光，左边墙上是配电板。',
-  draw() {
-    room(1, 0, 0, 1);
-    for (let i = 0; i < 6; i++) { r(96 + i * 22, 10, 14, 24, 2); for (let j = 0; j < 4; j++) px(99 + i * 22 + (j % 2) * 5, 14 + j * 5, S.f.power ? ((i + j + Math.floor(tick / 2)) % 3 ? 12 : 7) : 1); }
-    const pu = S.f.power ? Math.round(Math.sin(tick / 4) * 1.5) : 0;
-    r(150, 92, 20, 26, 2); circ(160, 70, 22 + pu, 2); circ(160, 70, 18, 3); circ(160, 70, 12, S.f.power ? 4 : 2); circ(160, 70, 6, S.f.power ? 5 : 3); circ(160 + (S.f.power ? Math.round(Math.sin(tick / 9) * 2) : 0), 70, 2, S.f.power ? 6 : 4);
-    hot(134, 44, 52, 76, 'ai', '', '零');
-    if (S.route === 'z') { r(151, 100, 18, 14, S.f.pass ? 2 : 5); r(153, 103, 14, 2, 1); r(153, 107, 14, 2, 1); hot(148, 97, 24, 20, 'go', 'inner', '主机日志'); }
-    r(26, 44, 46, 60, 2); r(26, 44, 46, 2, 4); spr(42, 58, ['..77.', '.77..', '7777.', '..77.', '.77..', '77...'], 3); px(66, 50, S.f.power ? 12 : 9);
-    hot(26, 44, 46, 60, 'go', 'tiles', '配电板');
-    r(204, 56, 36, 64, 3); r(206, 58, 32, 60, S.f.gate ? 0 : 2); ['t', 's', 'l'].forEach((k, i) => r(211 + i * 9, 64, 5, 5, S.f.gate ? [7, 12, 15][i] : 0)); if (S.f.gate) { ctx.globalAlpha = .5; r(210, 80, 24, 38, 8); ctx.globalAlpha = 1; }
-    hot(204, 56, 36, 64, 'gate', '', '舱门');
-    r(256, 60, 44, 60, 13); r(256, 60, 44, 2, 14); r(262, 68, 32, 44, S.f.seal_s ? 0 : 14); if (!S.f.seal_s) { circ(278, 90, 8, 13, false); r(277, 84, 2, 6, 6); r(284, 70, 8, 10, 0); }
-    hot(256, 60, 44, 60, 'go', 'vault', '保险柜');
-    hatch('shaft', '冷却井');
-    dimIf(!S.f.power);
-  },
+  draw() { drawCore(); },
   hint: () => [!S.f.power ? '配电板缺一根保险丝。当铺的天平上，有一枚硬币不太对劲。' : !S.f.seal_s ? '保险柜要三位数字。零把它存进了三段广播里，小艇的收音机收得到。' : '集齐三枚印章就去点舱门。', !S.f.power ? '当铺天平找出假币（保险丝藏在里面）→ 回来装上并接通线路。' : '温室通电浇花，记下三槽花的颜色顺序 → 小艇收音机按这个顺序听三个频道 → 对照当铺的电码表 → 保险柜。'] });
 
 reg('back', { name: '后舱', parent: 'map', desc: () => '很小的一间舱室。桌上放着一只蛋糕，不为哪一天，只为你来了。',
-  draw() {
-    r(0, 0, W, H, S.f.end ? 10 : 0); if (S.f.end) { ctx.globalAlpha = .35; circ(160, 80, 90, 8); ctx.globalAlpha = .3; circ(160, 80, 60, 7); ctx.globalAlpha = 1; }
-    r(0, 130, W, 50, 13); r(0, 130, W, 2, 0); r(96, 26, 128, 60, 2); r(100, 30, 120, 52, 0); starfield(41, 40, 100, 30, 120, 52);
-    r(90, 122, 140, 6, 14); r(100, 128, 6, 40, 13); r(214, 128, 6, 40, 13);
-    r(128, 118, 64, 4, 6); r(134, 98, 52, 20, 6); r(134, 98, 52, 5, 9); for (let i = 0; i < 6; i++) r(136 + i * 9, 103, 5, 3, 9); r(144, 84, 32, 14, 6); r(144, 84, 32, 4, 7); for (let i = 0; i < 4; i++) r(146 + i * 8, 88, 4, 2, 7);
-    const n = 1 + S.stars.length;
-    for (let i = 0; i < n; i++) { const x = 160 - (n - 1) * 4 + i * 8; r(x - 1, 74, 2, 10, [5, 15, 12, 7][i]); if (S.f.end) { r(x - 1, 70 - (tick % 2), 2, 3, 7); px(x - 1 + (tick % 2), 69 - (tick % 2), 6); } }
-    hot(124, 66, 72, 58, 'cake', '', '蛋糕');
-  },
-  hint: () => ['点一下蛋糕。', '点一下蛋糕。'] });
+  draw() { drawBack(); },
+  hint: () => S.stars.length && !S.f.lit && S.f.cakeTry ? ['这一题要动的是网页本身：把屏幕上方的 ✦ 拖到蛋糕上。', '按住 ✦ 不放，拖到蛋糕上再松手。实在不行，再点一次蛋糕，零会替你放。'] : ['点一下蛋糕。', '点一下蛋糕。'] });
 
 /* ---------- 特写 ---------- */
 reg('scale', { name: '天平', parent: 'shop', desc: () => S.f.scale ? '假币已经找到了。' : '九枚硬币里有一枚略轻。点硬币可以把它放上左盘、右盘或放回托盘。天平只借两次。',
@@ -697,12 +1006,13 @@ const encourage = () => pick(['（别急，' + who() + '。重来一遍，仔细
 
 /* ================= 行为 ================= */
 function winScale() { S.f.scale = 1; S.sc.acc = false; give('fuse'); sfx('win'); say(praise() + '就是它，分量不对。掰开一看，这根本不是硬币：两片薄壳中间卷着一根保险丝。有人把它藏进了硬币堆里。'); return; say('翻过来一看，这根本不是硬币，是一枚自动贩卖机的代币。'); }
-function powerOn() { S.f.power = 1; sfx('win'); talk(['啪。整座空间站的灯依次亮了起来。', Z(praise()), Z('……主电恢复了。谢谢你，{name}。我刚才说话是不是断断续续的？'), Z('现在温室的喷淋可以转了。另外，我左手边的保险柜里锁着一枚印章，密码我自己也忘了，只记得把它存进了三段广播里。码头小艇上的收音机收得到。')]); }
+function powerOn() { S.f.power = 1; sfx('win'); talk(['啪。整座空间站的灯依次亮了起来。', Z(praise())].concat(fact('power')).concat([Z('……主电恢复了。谢谢你，{name}。我刚才说话是不是断断续续的？'), Z('现在温室的喷淋可以转了。另外，我左手边的保险柜里锁着一枚印章，密码我自己也忘了，只记得把它存进了三段广播里。码头小艇上的收音机收得到。')])); }
 const A = {
   box() { if (!ME) return say('柜台下面是一排保管箱，每只上面都有名牌。没有一只写着「访客」。'); S.f.box = 1; S.v = 'box'; sfx('pick'); say(V.box.desc() + ' 零说，它一直替你收着，走的时候记得带上。'); },
   pet() {
     const it = ME && ME.item && !S.f.catItem;
     if (it) { S.f.catItem = 1; S.aff.c += 1; return talk([C('你身上有' + ITEMNAME[ME.item] + '的味道。'), C('是好东西。收好。')]); }
+    if (S.f.cat && !S.facts.includes('cat')) return talk([C('草莓？我又尝不出甜。我只是觉得它红红的，放在蛋糕上好看。')].concat(fact('cat')));
     talk([C(['喵。', '尾巴，别踩。', '大眼睛其实不坏。它只是太听规程的话。', '我修过这座站里所有的灯。'][Math.floor(Math.random() * 4)])]);
   },
   culprit(i) {
@@ -812,17 +1122,26 @@ const A = {
   },
   cake() {
     if (S.f.end) return showEnd(false);
+    if (S.stars.length && !S.f.lit) {
+      S.f.cakeTry = (S.f.cakeTry || 0) + 1;
+      if (S.f.cakeTry === 1) return talk(['蛋糕上只插着一根光秃秃的蜡烛。', Z('你身上的星屑在发光，就在屏幕上方，那一串 ✦。'), Z('把它们拖到蛋糕上试试。')]);
+      if (!S.assist && S.f.cakeTry < 3) return say('零：「这一题要动的是网页本身。按住屏幕上方的 ✦，拖到蛋糕上再松手。」');
+      S.f.lit = 1; say('零：「那我替你放上去。」');
+    }
     const n = S.stars.length;
     talk([n ? '你把捡到的星屑放在蛋糕上。它们立了起来，变成了蜡烛。' : '蛋糕上只有一根蜡烛。', '桌上除了蛋糕，还有一只空盘子，一把叉子。', Z('我没有手，点不了火。'), '话音刚落，烛芯自己亮了。'].concat(FINAL[S.route] || []).concat([{ fn: () => { S.f.end = 1; if (!S.end) S.end = 'l1'; sfx('win'); save(); setTimeout(() => runSlides(() => runCG(() => showEnd(false))), 500); } }]));
   }
 };
 
 /* ================= 第二场景、支线、笔记本、宝箱 ================= */
-function txt(s, x, y, size, c, align = 'left', bold = true) { size = Math.max(size, 7); ctx.fillStyle = PAL[c]; ctx.font = (bold ? 'bold ' : '') + size + 'px "PingFang SC","Microsoft YaHei","Noto Sans SC",monospace'; ctx.textAlign = align; ctx.textBaseline = 'top'; ctx.fillText(s, x, y); }
+function txt(s, x, y, size, c, align = 'left', bold = true) { size = Math.max(size, 7); ctx.fillStyle = typeof c === 'string' ? c : PAL[c]; ctx.font = (bold ? 'bold ' : '') + size + 'px "PingFang SC","Microsoft YaHei","Noto Sans SC",monospace'; ctx.textAlign = align; ctx.textBaseline = 'top'; ctx.fillText(s, x, y); }
 const SUB = { dock: 'mail', shop: 'store', green: 'nursery', obs: 'bunk', core: 'shaft' };
 function hatch(id, tip) {
-  r(268, 140, 46, 28, 3); r(270, 142, 42, 24, 0); for (let i = 0; i < 4; i++) r(276, 146 + i * 5, 30, 2, 2);
-  const b = Math.floor(tick / 4) % 2; r(287, 133 + b, 8, 2, 7); r(289, 135 + b, 4, 2, 7); r(290, 137 + b, 2, 1, 7);
+  r(266, 139, 50, 30, MT[0]); bevel(268, 140, 46, 27, MT, 3); r(272, 144, 38, 19, '#07090f');
+  for (let i = 0; i < 4; i++) { r(276, 147 + i * 4, 30, 1, MT[3]); r(276, 148 + i * 4, 30, 1, MT[1]); }
+  [[270, 142], [311, 142], [270, 164], [311, 164]].forEach(([x, y]) => rivet(x, y));
+  hazard(268, 166, 46, 2);
+  const b = Math.round(Math.sin(tick * .2) * 1.5); soft(291, 134 + b, 9, '255,210,110', .35); r(287, 131 + b, 8, 2, YL[3]); r(288, 133 + b, 6, 2, YL[2]); r(289, 135 + b, 4, 1, YL[2]); r(290, 136 + b, 2, 1, YL[1]);
   hot(266, 130, 50, 40, 'go', id, '舱口 · ' + tip);
 }
 const SHARDS = ['mail', 'store', 'nursery', 'bunk', 'shaft'];
@@ -997,7 +1316,8 @@ const tfmt = t => (Math.round(t * 100) / 100).toString();
 reg('shaft', { name: '冷却井', parent: 'core', desc: () => '温控器的委托：「冷却液要正好 42 度。我只会量，不会倒。」三只水箱的水可以互相倒：一直倒到对方满，或者自己空。两股水混在一起，温度按水量平均。让任意一只水箱恰好 42 度。' + bestTxt('shaft'),
   draw() {
     r(0, 0, W, H, 0); for (let i = 0; i < 5; i++) { r(6 + i * 7, 0, 2, H, 2); r(W - 8 - i * 7, 0, 2, H, 2); }
-    r(46, 6, 228, 168, 1); r(46, 6, 228, 2, 4); txt('目标：任意一箱 = 42°', 54, 12, 9, 7); txt('已倒 ' + S.tkn + ' 次', 266, 13, 8, 5, 'right');
+    r(46, 6, 228, 168, 1); r(46, 6, 228, 2, 4); if (!S.f.quiet) { const on = tick % 8 < 4; r(150, 0, 20, 5, on ? '#ff3030' : '#501010'); if (on) soft(160, 4, 22, [255, 40, 40], .35); }
+    txt('目标：任意一箱 = 42°', 54, 12, 9, 7); txt('已倒 ' + S.tkn + ' 次', 266, 13, 8, 5, 'right');
     S.tk.forEach(([v, t], i) => {
       const x = 66 + i * 70, h = TCAP[i] * 10, y = 142 - h, fh = Math.round(v * 10), col = t < 25 ? 4 : t < 45 ? 23 : t < 65 ? 8 : 9, hit = v > 0 && Math.abs(t - 42) < 1e-6;
       r(x - 2, y - 2, 52, h + 4, hit ? 7 : 3); r(x, y, 48, h, 0); if (v > 0) { r(x, 142 - fh, 48, fh, col); r(x, 142 - fh, 48, 2, 6); }
@@ -1006,7 +1326,7 @@ reg('shaft', { name: '冷却井', parent: 'core', desc: () => '温控器的委�
     });
   },
   btns: () => [['甲→乙', 'pour', '01'], ['甲→丙', 'pour', '02'], ['乙→甲', 'pour', '10'], ['乙→丙', 'pour', '12'], ['丙→甲', 'pour', '20'], ['丙→乙', 'pour', '21'], ['重来', 'pourclr']],
-  hint: () => ['90 度太热，0 度太冷。先用丙箱的冷水把甲箱压下来：5 升 90 度加 4 升 0 度，是 9 升 50 度。', '甲箱 50 度以后，再想办法让它和 30 度的水按 2 比 1 混在一起：(48×4 + 30×2) ÷ 6 = 42。'],
+  hint: () => !S.f.quiet ? ['这一题要动的是网页本身：温控器的警报和网页的声音是连着的。', '点网页上的「声音：开」，把它关掉。关掉以后可以再打开，警报不会再响。'] : ['90 度太热，0 度太冷。先用丙箱的冷水把甲箱压下来：5 升 90 度加 4 升 0 度，是 9 升 50 度。', '甲箱 50 度以后，再想办法让它和 30 度的水按 2 比 1 混在一起：(48×4 + 30×2) ÷ 6 = 42。'],
   sol: () => '<p>最少 4 次，一共有 9 种倒法。其中一种：</p><ol><li>丙→甲：甲变成 9 升 50°</li><li>乙→丙：丙变成 4 升 30°，乙剩 2 升 30°</li><li>丙→甲：甲变成 10 升 48°，丙剩 3 升</li><li>甲→乙：乙变成 6 升，(2×30 + 4×48) ÷ 6 = 42°</li></ol>',
   skip() { S.tk = [[6, 48], [6, 42], [3, 30]]; S.tkn = 4; sideWin('shaft', 0, '零替你把水倒好了。乙箱正好 42 度。', TEMPLINE); } });
 const TEMPLINE = { who: '温控器', t: '四十二度整。我量了一辈子温度，这是头一次有人照着我说的数来。' };
@@ -1028,6 +1348,19 @@ function simStep() {
   }
 }
 Object.assign(A, {
+  paint() {
+    if (S.f.seed) return say('画上的花盘被水化开了，只剩一团黄。' + (S.f.sun ? '真的那一株，在土箱里朝着东边。' : '种子在你手里。'));
+    if (!S.f.water) return say('一幅巴掌大的油画：一株向日葵，花盘朝着画框右边。画框背面用铅笔写着一个字：东。颜料摸上去还有点黏，像是很怕水。');
+    S.f.seed = 1; give('seed');
+    talk(['喷淋的水雾一阵阵落在画布上。颜料化开了，花盘正中滚出来一粒葵花籽，落进你手心。', '是真的。', Z('……画里的东西也能拿出来？这座站里的怪事很多，我已经习惯了。'), Z('左边那只土箱里有土。')]);
+  },
+  soil() {
+    if (S.f.sun) return say('向日葵长得很快，花盘一直朝着东边，没有再转过。');
+    if (S.sel !== 'seed') return say(has('seed') ? '一箱培养土。先在下面的物品栏里选中葵花籽，再点土箱。' : '一箱培养土，松松软软的，什么也没种。');
+    drop('seed'); S.f.sun = 1; sfx('win');
+    talk(['你把葵花籽按进土里。补光灯一亮，它就冒了芽，一节一节往上长，开出一朵花。', '花盘转了半圈，朝着东边停住了。', Z('画框背面那个「东」字，原来是这个意思。')].concat(fact('sun')));
+  },
+  fact(k) { sfx('pick'); talk([Z('这只灭火器是地面上的老型号。在这里，它几乎用不上。')].concat(fact(k))); },
   dc(c) { if (sim) return; if (c === '0') S.pg = []; else if (c === '-') S.pg.pop(); else if (S.pg.length < DMAX) S.pg.push(c); else return say('无人机只装得下 ' + DMAX + ' 条指令。'); sfx('click'); },
   dfly() { if (sim) return; if (!S.pg.length) return say('程序还是空的。'); if (!S.pg.includes('F')) return say('程序里一条「前进」都没有，无人机只会原地打转。'); sim = { kind: 'drone', st: dStart(), i: 0 }; sfx('step'); say('三架无人机同时起飞，照着同一段程序飞。'); },
   rk(i) { S.rk[+i] = !S.rk[+i]; S.arr = null; sfx('click'); },
@@ -1048,6 +1381,12 @@ Object.assign(A, {
     S.aff.c += S.shard.includes('bunk') ? 0 : 1; sideWin('bunk', res.tier, ['螺丝绕着三只盒子转了一圈，挨个闻了闻。', C(res.t)], CATLINE);
   },
   pour(p) {
+    if (!S.f.quiet) {
+      S.f.alarmTry = (S.f.alarmTry || 0) + 1;
+      if (muted) { quiet('你那边的声音本来就关着。温控器侧耳听了听，警报也跟着停了。'); return; }
+      if (S.f.alarmTry >= (S.assist ? 2 : 3)) { quiet('零：「我替你把警报按掉了。」'); }
+      else return talk([{ who: '温控器', t: '嘀——嘀——这警报响了三年，我量不准。能让它安静一会儿吗？' }, Z(S.f.alarmTry > 1 ? '这一题要动的是网页本身。网页上有一个声音开关。' : '它的警报，和你那边的声音是连在一起的。')]);
+    }
     const i = +p[0], j = +p[1], s = S.tk, amt = Math.min(s[i][0], TCAP[j] - s[j][0]); if (amt <= 0) return say(s[i][0] <= 0 ? TN[i] + '箱是空的。' : TN[j] + '箱已经满了。');
     s[j][1] = (s[j][0] * s[j][1] + amt * s[i][1]) / (s[j][0] + amt); s[j][0] += amt; s[i][0] -= amt; S.tkn++; sfx('click');
     const k = s.findIndex(t => t[0] > 0 && Math.abs(t[1] - 42) < 1e-6);
@@ -1097,7 +1436,7 @@ function autoNotes() { note(S.v === 'tele' && !S.f.lens ? '' : S.v === 'rules' ?
 function showNotes() {
   const order = Object.keys(NOTES), all = order.filter(k => S.notes.includes(k)), got = all.filter(k => !ndone(k)), gone = all.filter(k => ndone(k) && !k.startsWith('c_')).length;
   const nn = got.filter(k => !k.startsWith('c_')).map(k => `<li>${esc(NOTES[k])}${k === 'bunk' ? got.filter(c => c.startsWith('c_')).map(c => '<br>' + esc(NOTES[c])).join('') : ''}</li>`).join('');
-  $('notebox').innerHTML = `<h2>笔记</h2><p class="sub">看过的线索会自动记在这里</p><p>印章：${['t', 's', 'l'].map(k => S.f['seal_' + k] ? ['时', '声', '光'][['t', 's', 'l'].indexOf(k)] : '＿').join(' ')}　·　星屑 ${S.stars.length} / 3　·　记忆碎片 ${S.shard.length} / 5</p>${nn ? `<ul class="notes">${nn}</ul>` : '<p style="color:#6b8cc4">' + (gone ? '手上的线索都用完了。' : '还没有记下任何东西。') + '</p>'}${gone ? `<p style="color:#6b8cc4;font-size:13px">已经解开、后面用不上的 ${gone} 条线索划掉了。</p>` : ''}<div class="row"><button type="button" class="pri" id="nClose">合上</button></div>`;
+  $('notebox').innerHTML = `<h2>笔记</h2><p class="sub">看过的线索会自动记在这里</p><p>印章：${['t', 's', 'l'].map(k => S.f['seal_' + k] ? ['时', '声', '光'][['t', 's', 'l'].indexOf(k)] : '＿').join(' ')}　·　星屑 ${S.stars.length} / 3　·　记忆碎片 ${S.shard.length} / 5</p>${nn ? `<ul class="notes">${nn}</ul>` : '<p style="color:#6b8cc4">' + (gone ? '手上的线索都用完了。' : '还没有记下任何东西。') + '</p>'}${gone ? `<p style="color:#6b8cc4;font-size:13px">已经解开、后面用不上的 ${gone} 条线索划掉了。</p>` : ''}<h2 style="margin-top:14px">收获 ${S.facts.length} / ${Object.keys(FACTS).length}</h2>${S.facts.length ? '<ul class="notes">' + Object.keys(FACTS).filter(k => S.facts.includes(k)).map(k => `<li><b>${esc(FACTS[k][0])}</b>　${esc(FACTS[k][1])}</li>`).join('') + '</ul>' : '<p style="color:#6b8cc4">站里藏着一些「原来如此」。解开谜题、到处点点，就会记在这里。</p>'}<div class="row"><button type="button" class="pri" id="nClose">合上</button></div>`;
   $('notes').hidden = false; $('nClose').onclick = () => { $('notes').hidden = true; };
 }
 
@@ -1173,6 +1512,7 @@ function mkIcons() {
   const mk = (id, fn) => { ctx = c.getContext('2d'); ctx.clearRect(0, 0, 12, 12); fn(); iconURL[id] = c.toDataURL(); };
   mk('token', () => { circ(6, 6, 5, 7); circ(6, 6, 3, 8, false); });
   mk('fuse', () => { r(1, 4, 10, 4, 5); r(1, 4, 2, 4, 6); r(9, 4, 2, 4, 6); r(3, 6, 6, 1, 8); });
+  mk('seed', () => { r(4, 1, 4, 10, '#1c1a16'); r(3, 3, 6, 6, '#1c1a16'); r(5, 2, 1, 8, '#e8e0c8'); r(7, 3, 1, 6, '#9a9080'); r(4, 4, 1, 4, '#9a9080'); });
   mk('lens', () => { circ(6, 6, 5, 4); circ(6, 6, 3, 5); px(4, 4, 6); });
   ['t', 's', 'l'].forEach(k => mk('seal_' + k, () => sealIcon(k, 1, 1)));
   mk('pass', () => { circ(6, 6, 5, 9); circ(6, 6, 3, 6, false); px(6, 6, 6); });
@@ -1181,11 +1521,28 @@ function mkIcons() {
 function invClick(id) { audio(); S.sel = S.sel === id ? null : id; sfx('click'); say(S.sel ? ITEMS[id][0] + '：' + ITEMS[id][1] + '（已选中，点场景里的东西来使用）' : ''); refresh(); save(); }
 let K = 4;
 function fitCanvas(c, k0) { const dpr = window.devicePixelRatio || 1, w = c.clientWidth || 960, k = Math.max(2, Math.min(6, Math.round(w * dpr / 320))); if (c.width !== 320 * k) { c.width = 320 * k; c.height = 180 * k; } return k; }
-function draw() { hots = []; K = fitCanvas(cv); ctx.setTransform(K, 0, 0, K, 0, 0); ctx.imageSmoothingEnabled = false; V[S.v].draw(); }
+const HAND = (() => { try {
+  const m = ['....##..........', '...#oo#.........', '...#oo#.........', '...#oo#.........', '...#oo####......', '...#oo#oo#oo##..', '.###oo#oo#oo#o#.', '#oo#oooooooo#o#.', '#ooooooooooooo#.', '.#ooooooooooo#..', '..#oooooooooo#..', '..#ooooooooo#...', '...#oooooooo#...', '....#oooooo#....', '....########....'];
+  const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
+  m.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = ch === '#' ? '#10141e' : '#f4f0e6'; g.fillRect(x * 2, y * 2, 2, 2); } }));
+  return 'url(' + c.toDataURL() + ') 9 0, pointer'; } catch (e) { return 'pointer'; } })();
+let mx = -1, my = -1, puffs = [];
+function feel() {   // 手感：悬停的热区四角描白边，点击处冒一点像素灰
+  if (!dOn && mx >= 0) { let h = null; for (let i = hots.length - 1; i >= 0; i--) { const o = hots[i]; if (mx >= o.x && mx < o.x + o.w && my >= o.y && my < o.y + o.h) { h = o; break; } }
+    if (h && h.w < 200 && !h.hide) { const a = tick % 4 < 2 ? '#ffffff' : '#c8d8ff', L = Math.min(4, Math.floor(h.w / 3), Math.floor(h.h / 3)), x0 = Math.floor(h.x) - 1, y0 = Math.floor(h.y) - 1, x1 = Math.ceil(h.x + h.w), y1 = Math.ceil(h.y + h.h);
+      [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]].forEach(([x, y, dx, dy]) => { r(dx > 0 ? x : x - L + 1, y, L, 1, a); r(x, dy > 0 ? y : y - L + 1, 1, L, a); }); } }
+  puffs = puffs.filter(p => p.t-- > 0); puffs.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .3; r(Math.round(p.x), Math.round(p.y), 1, 1, p.t > 2 ? '#ffffff' : '#8a9ab8'); });
+}
+function puff(x, y) { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283 + Math.random() * .5; puffs.push({ x, y, vx: Math.cos(a) * 2, vy: Math.sin(a) * 2 - 1, t: 4 }); } }
+function tabTitle() {   // 第四面墙：观星台的线索写在浏览器标签页上
+  const t = S.v === 'obs' && !S.stars.includes(2) && $('title').hidden ? (tick % 24 < 12 ? '零号站 · 观星台' : '✦ 穹顶玻璃右上角，有一颗星不在星图上') : '零号站';
+  if (document.title !== t) document.title = t;
+}
+function draw() { tabTitle(); hots = []; K = fitCanvas(cv); ctx.setTransform(K, 0, 0, K, 0, 0); ctx.imageSmoothingEnabled = false; V[S.v].draw(); feel(); }
 window.addEventListener('resize', () => { try { draw(); } catch (e) {} });
 function refresh() {
   const v = V[S.v];
-  if (S.v === 'radio' && S.chan != null) startMorse(); else stopMorse();
+  if (S.v === 'radio' && S.chan != null) startMorse(); else stopMorse(); alarm();
   draw();
   $('where').textContent = v.name; $('back').hidden = !v.parent;
   $('labs').innerHTML = S.v === 'map' ? [['码头', 61, 111], ['当铺', 128, 57], ['温室', 205, 59], ['观星台', 270, 113], ['机房', 193, 167], [S.f.gate ? '后舱' : '？？？', 125, 167]].map(([t, x, y]) => `<span class="lab" style="left:${x / 3.2}%;top:${y / 1.8}%">${t}</span>`).join('') : '';
@@ -1206,9 +1563,18 @@ function at(e) {
   for (const h of hots) { const dx = Math.max(h.x - x, 0, x - h.x - h.w), dy = Math.max(h.y - y, 0, y - h.y - h.h), d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = h; } }
   return best;
 }
-cv.addEventListener('click', e => { if (dOn) { if (!dWait) nextLine(); return; } const h = at(e); if (h) act(h.a, h.p); });
-cv.addEventListener('mousemove', e => { const h = dOn ? null : at(e); cv.style.cursor = h ? 'pointer' : 'default'; $('tip').hidden = !(h && h.tip); if (h && h.tip) $('tip').textContent = h.tip; });
-cv.addEventListener('mouseleave', () => { $('tip').hidden = true; });
+cv.addEventListener('click', e => { if (dOn) { if (!dWait) nextLine(); return; } const h = at(e); if (h) { const b = cv.getBoundingClientRect(); puff((e.clientX - b.left) * W / b.width, (e.clientY - b.top) * H / b.height); sfx('tap'); act(h.a, h.p); } });
+cv.addEventListener('mousemove', e => { const b = cv.getBoundingClientRect(); mx = (e.clientX - b.left) * W / b.width; my = (e.clientY - b.top) * H / b.height; const h = dOn ? null : at(e); cv.style.cursor = h ? HAND : 'default'; $('tip').hidden = !(h && h.tip); if (h && h.tip) $('tip').textContent = h.tip; });
+$('stars').draggable = true;
+$('stars').addEventListener('dragstart', e => { if (!S.stars.length) return e.preventDefault(); e.dataTransfer.setData('text/plain', '✦'); e.dataTransfer.effectAllowed = 'move'; });
+cv.addEventListener('dragover', e => { if (S.v === 'back' && S.stars.length && !S.f.lit) e.preventDefault(); });
+cv.addEventListener('drop', e => {
+  e.preventDefault(); if (dOn || S.v !== 'back' || S.f.lit || !S.stars.length) return;
+  const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * W / b.width, y = (e.clientY - b.top) * H / b.height;
+  if (x < 110 || x > 210 || y < 50 || y > 130) return say('星屑落在了桌上。再往蛋糕那边一点。');
+  puff(x, y); S.f.lit = 1; sfx('pick'); act('cake');
+});
+cv.addEventListener('mouseleave', () => { mx = my = -1; $('tip').hidden = true; });
 $('inv').addEventListener('click', e => { const el = e.target.closest('[data-id]'); if (el && !dOn) invClick(el.dataset.id); });
 $('pb').addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (el) act(el.dataset.a, el.dataset.p); });
 $('back').onclick = () => { if (dOn) return; const p = V[S.v].parent; if (p) act('go', p); };
