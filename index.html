@@ -37,6 +37,7 @@ button.pri{background:var(--gold);color:#1b1408;border-color:#fff3c4;font-weight
 #cap{min-height:3.2em;margin:0;line-height:1.6;padding:0 2px;text-wrap:pretty}
 #pb{display:flex;gap:6px;flex-wrap:wrap;min-height:34px}
 #inv{display:flex;gap:6px;flex-wrap:wrap;min-height:60px;padding:6px;border:2px solid var(--slate);background:#10131f}
+#inv[hidden],#bNote[hidden]{display:none}
 #inv:empty::before{content:"物品栏是空的";color:#5d6690;font-size:13px;align-self:center}
 .slot{width:60px;height:46px;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;gap:1px}
 .slot img{width:24px;height:24px;image-rendering:pixelated}
@@ -65,6 +66,25 @@ button.pri{background:var(--gold);color:#1b1408;border-color:#fff3c4;font-weight
 .bless .nm{color:var(--gold);font-size:19px;font-weight:bold}
 #ntoast{position:absolute;right:8px;bottom:8px;background:var(--gold);color:#1b1408;font-size:12px;padding:2px 8px;box-shadow:2px 2px 0 #000;pointer-events:none}
 #notebox ol,#notebox ul{margin:6px 0;padding-left:1.4em}ul.notes{margin:6px 0;padding-left:1.2em}ul.notes li{margin:4px 0}
+#save textarea{width:100%;font:12px/1.5 monospace;color:var(--paper);background:var(--ink);border:2px solid var(--slate);padding:8px;resize:vertical;word-break:break-all}
+#svmsg{min-height:1.6em;color:var(--gold);font-size:13px;margin:8px 0 0}
+#bSave{position:fixed;right:14px;bottom:14px;z-index:6;border-color:var(--gold);color:var(--gold);background:var(--navy);box-shadow:3px 3px 0 #000}
+#save{z-index:7}
+#stars.grab{cursor:grab;color:var(--gold);text-shadow:0 0 6px rgba(244,201,93,.8);animation:twk 1s steps(2) infinite;touch-action:none;user-select:none}
+@keyframes twk{50%{opacity:.55}}
+#dragStar{position:fixed;z-index:9;pointer-events:none;transform:translate(-50%,-50%);color:var(--gold);font-size:26px;text-shadow:0 0 10px rgba(244,201,93,.9);user-select:none}
+body.dragging,body.dragging *{cursor:grabbing !important}
+#slide:not([hidden])~#bSave,#cg:not([hidden])~#bSave{display:none}
+#hdGrid{display:flex;flex-direction:column;gap:6px;align-items:center;margin:10px 0 4px}
+.hdrow{display:flex;gap:6px}.hdrow.empty{opacity:.35}
+.hdc{width:62px;border:2px solid var(--slate);background:var(--ink);text-align:center;padding:2px 0 4px}
+.hdpy{font:13px/1.4 monospace;min-height:1.4em;color:#6b7395}.hdpy .t{margin-left:1px}
+.hdch{font-size:26px;line-height:1.2;color:#6b7395}
+.hdc .g,.hdleg .g{color:#5fd08a}.hdc .y,.hdleg .y{color:var(--gold)}.hdc .n,.hdleg .n{color:#5d6690}
+.hdch.g{color:#5fd08a}.hdch.y{color:var(--gold)}
+#hdLeft{text-align:center;color:var(--sky);font-size:13px;margin:0}
+#hd .row input{flex:1;min-width:140px;font:inherit;color:var(--paper);background:var(--ink);border:2px solid var(--slate);padding:8px 10px}
+#hdmsg{min-height:1.6em;color:var(--gold);font-size:14px;margin:8px 0 0}
 #askmsg{min-height:1.6em;color:var(--gold);font-size:13px;margin:8px 0 0}
 .pcard{max-width:760px;width:100%;text-align:center}
 #pcv{max-width:100%;max-height:calc(100dvh - 120px);image-rendering:auto;box-shadow:6px 6px 0 #000}
@@ -78,7 +98,7 @@ button.pri{background:var(--gold);color:#1b1408;border-color:#fff3c4;font-weight
 #cgSkip{position:fixed;right:16px;top:16px;z-index:6}
 .memo{border-top:2px dashed var(--slate);margin-top:16px;padding-top:6px}.memo h3{color:var(--gold);margin:8px 0 4px;font-size:17px;letter-spacing:.15em}.memo p{margin:6px 0}.memo .sig{text-align:right;color:var(--gold);font-weight:bold}
 @media (max-width:520px){#dlg{position:fixed;left:8px;right:8px;bottom:8px;z-index:4}body{font-size:14px}h1{font-size:16px}.slot{width:54px}}
-#stars{cursor:grab;user-select:none}#stars:active{cursor:grabbing}
+
 #goal{margin:8px 0 2px;padding:6px 10px;border-left:3px solid #ffd84a;background:#151a2c;color:#ffd84a;font-size:.95em;line-height:1.5}
 #notebox .goal{padding:6px 10px;border-left:3px solid #ffd84a;background:#151a2c;color:#ffe9a0}
 </style>
@@ -163,16 +183,30 @@ button.pri{background:var(--gold);color:#1b1408;border-color:#fff3c4;font-weight
 <li>五道站员的委托题，点两次「提示」后还会出现「看解答」，里面有完整的解法和思路。</li>
 </ul>
 <h3>存档</h3>
-<p>进度自动保存在这个浏览器里。换设备或清除浏览器数据，就要从头开始。</p>
+<p>进度自动保存在这台电脑的这个浏览器里，每个名字各存各的。</p>
+<p class="warn">换电脑、换浏览器或清理浏览器数据之前，先点右下角的「存档码」，把那一串字复制下来存好。到了新浏览器，再点右下角的「存档码」，把它粘贴进去，就能接着玩。</p>
 <div class="row"><button type="button" class="pri" id="gClose">知道了</button></div>
 </div></div>
 <div id="cg" class="ov" hidden><div class="scard"><canvas id="cgv" width="960" height="540"></canvas><p id="cgt"></p><p id="cgEnd" hidden>点击结束 ▸</p></div><button id="cgSkip" type="button">跳过动画</button></div>
 <div id="notes" class="ov" hidden><div class="card" id="notebox"></div></div>
 <div id="ask" class="ov" hidden><div class="card"><p id="askt"></p><label for="askin">口令</label><input id="askin" autocomplete="off" autocapitalize="off" spellcheck="false"><p id="askmsg"></p><div class="row"><button type="button" class="pri" id="askOk">开锁</button><button type="button" id="askNo">先不开</button></div></div></div>
+<div id="save" class="ov" hidden><div class="card guide"><h3 id="svTitle">存档码</h3>
+<div id="svFirst"><p>进度会自动存在<b>这台电脑的这个浏览器</b>里，按你的名字分开存。</p><p class="warn">换电脑、换浏览器，或者清理了浏览器数据，进度就找不到了。</p><p>所以换地方玩之前，点右下角金色的「存档码」，把那一串字复制下来存好（发给自己就行）。到了新浏览器，同样点右下角的「存档码」，粘贴进去，就能从这里接着玩。这个按钮一直在右下角。</p><p>下面就是你现在的存档码，可以先复制一份试试。</p></div>
+<div id="svOut"><p id="svOutT"></p><textarea id="svcode" readonly rows="4" spellcheck="false"></textarea><div class="row"><button type="button" class="pri" id="svCopy">复制存档码</button></div></div>
+<div id="svIn"><p id="svInT">换了浏览器？把之前复制的存档码粘贴到下面，就能接着玩。</p><textarea id="svin" rows="4" spellcheck="false" placeholder="ZS1.……"></textarea><div class="row"><button type="button" class="pri" id="svLoad">读取存档</button></div></div>
+<p id="svmsg"></p><div class="row"><button type="button" id="svClose">关闭</button></div></div></div>
+<div id="hd" class="ov" hidden><div class="card guide"><h3>小木盒 · 四格字锁</h3>
+<p>盒盖上有四个空格。猜一个四个字的词，什么字都可以，最多十次。每猜一次，盒子会告诉你每个字和它的声母、韵母、声调对不对。不熟悉这种玩法的话，先用一次提示。</p>
+<p class="hdleg"><span class="g">绿</span> 对，位置也对　<span class="y">黄</span> 有，但不在这一格　<span class="n">灰</span> 没有</p>
+<div id="hdGrid"></div><p id="hdLeft"></p>
+<div class="row"><input id="hdin" autocomplete="off" spellcheck="false" placeholder="输入四个字，按回车"><button type="button" class="pri" id="hdGo">猜</button><button type="button" id="hdHint">提示</button><button type="button" id="hdClose">放下盒子</button></div>
+<p id="hdmsg"></p></div></div>
+<button id="bSave" type="button" class="sv">存档码</button>
 <div id="photo" class="ov" hidden><div class="pcard"><canvas id="pcv"></canvas><div class="row" style="justify-content:center"><button type="button" class="pri" id="pSave">保存这张</button><button type="button" id="pClose">收好，回到站里</button></div></div></div>
 
 <script src="js/endings.js"></script>
 <script src="js/photos.js"></script>
+<script src="js/pinyin.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

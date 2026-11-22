@@ -72,23 +72,30 @@ function flow(t) {
   return { lit, ok };
 }
 const freshScale = () => ({ loc: [0,0,0,0,0,0,0,0,0], cand: [0,1,2,3,4,5,6,7,8], left: 2, last: '', acc: false, fake: Math.floor(Math.random() * 9) });
-const fresh = () => ({ v: 'map', inv: [], sel: null, f: {}, ch: {}, stars: [], clock: 610, freq: 90, lock: [0,0,0], vault: '', peg: [], tiles: initTiles(), brk: [0, 0, 0, 0, 0], sc: freshScale(), hints: {}, code: '', aff: { z: 0, c: 0 }, word: [], arch: '', chan: null, dial: [0, 0, 0], route: null, end: null, how: {}, facts: [], name: '', shard: [], notes: [], pg: [], rk: [true, true, true, true, true, true, true, true], arr: null, pots: [], srt: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tk: [[5, 90], [6, 30], [4, 0]], tkn: 0, best: {} });
-function load() { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && o.v && o.tiles && o.sc) return Object.assign(fresh(), o); } catch (e) {} return fresh(); }
-const HOWKEY = { scale: 'scale', clock: 'clock', locker: 'locker', console: 'console', tiles: 'tiles', vault: 'vault', inner: 'pass', crate: 'pass', archive: 'pass', mail: 'mail', rules: 'store', nursery: 'nursery', bunk: 'bunk', shaft: 'shaft' };
+const fresh = () => ({ v: 'map', inv: [], sel: null, f: {}, ch: {}, stars: [], clock: 610, freq: 90, lock: [0,0,0], vault: '', peg: [], tiles: initTiles(), brk: [0, 0, 0, 0, 0], nb: [], nbInk: 'k', rk2: [], no: [], hd: null, tsw: 0, kd: [0, 0, 0], sw: [0, 0, 0], swh: [0, 0, 0], sc: freshScale(), hints: {}, code: '', aff: { z: 0, c: 0 }, word: [], arch: '', chan: null, dial: [0, 0, 0], route: null, end: null, how: {}, facts: [], name: '', shard: [], notes: [], pg: [], rk: [true, true, true, true, true], arr: null, pots: [], srt: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tk: [[5, 90], [6, 30], [4, 0]], tkn: 0, best: {} });
+/* 存档：每个「名字＋口令」各占一格（访客一格）；KEY 本身是旧版的单格存档，第一次登录时迁过去 */
+const okSave = o => !!(o && o.v && o.tiles && o.sc);
+const slotKey = sl => sl ? KEY + '@' + sl : KEY;
+const slotOf = (nm, code) => { const t = String(nm || '').replace(/\s+/g, '').toLowerCase() + '|' + String(code || '').trim().toLowerCase(); if (t === '|') return 'guest'; let h = 0x811c9dc5; for (const ch of t) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+let curSlot = null; try { curSlot = localStorage.getItem(KEY + '-last'); } catch (e) {}
+function readSlot(sl) { try { const o = JSON.parse(localStorage.getItem(slotKey(sl)) || 'null'); if (okSave(o)) return o; if (sl) { const l = JSON.parse(localStorage.getItem(KEY) || 'null'); if (okSave(l) && slotOf(l.name, l.code) === sl) return l; } } catch (e) {} return null; }
+function load(sl = curSlot) { const o = readSlot(sl); return o ? Object.assign(fresh(), o) : fresh(); }
+const HOWKEY = { scale: 'scale', clock: 'clock', locker: 'locker', console: 'console', tiles: 'tiles', vault: 'vault', inner: 'pass', crate: 'pass', vent: 'pass', archive: 'pass', mail: 'mail', rules: 'store', nursery: 'nursery', bunk: 'bunk', shaft: 'shaft', board: 'board', night: 'night' };
 function markHow() {
-  const d = { scale: S.f.scale, clock: S.f.seal_t, locker: S.f.locker, console: S.f.seal_l, tiles: S.f.power, vault: S.f.seal_s, pass: S.f.pass };
+  const d = { board: S.f.nt2, night: S.f.night, scale: S.f.scale, clock: S.f.seal_t, locker: S.f.locker, console: S.f.seal_l, tiles: S.f.power, vault: S.f.seal_s, pass: S.f.pass };
   ['mail', 'store', 'nursery', 'bunk', 'shaft'].forEach(k => { d[k] = S.shard.includes(k); });
   for (const k in d) if (d[k] && !S.how[k]) S.how[k] = 'self';
 }
-function save() { try { markHow(); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function save() { try { markHow(); localStorage.setItem(slotKey(curSlot), JSON.stringify(S)); if (curSlot) localStorage.setItem(KEY + '-last', curSlot); } catch (e) {} }
 let S = load();
 let shuf = 0;
 let ME = null;            // 解密出来的专属内容 {name, easy, lines, from}
 const has = id => S.inv.includes(id);
-function give(id) { if (!has(id)) S.inv.push(id); sfx('pick'); }
+function give(id) { if (!has(id)) S.inv.push(id); S.f.hadItem = 1; sfx('pick'); }
 function drop(id) { S.inv = S.inv.filter(x => x !== id); if (S.sel === id) S.sel = null; }
 function say(t) { $('cap').textContent = t || ''; }
 const who = () => (ME && ME.name) || '旅人';
+const callName = () => ME ? (ME.call || ME.name + '同学') : '';   // 祝福里的称呼：有称呼用称呼，没有就「全名＋同学」
 
 const LOCK_CODE = [7, 6, 4], VAULT_CODE = '417', FREQ = 96.5, CLOCK_OK = 220;
 const TELE = [8, 5, 4, 6, 3], PEG_OK = [0, 3, 4, 2, 5];
@@ -96,7 +103,7 @@ const edges = p => { const s = new Set(); for (let i = 1; i < p.length; i++) s.a
 const MORSE = {'0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.'};
 const ITEMS = {
   token: ['代币', '比真硬币轻一点，边上刻着「自动贩卖」。'],
-  fuse: ['保险丝', '玻璃管里的细丝完好无损。'],
+  fuse: ['备用保险丝', '玻璃管里的细丝完好无损，管身贴着「备件」标签。'],
   lens: ['镜片', '一片磨得很好的物镜。'],
   seed: ['葵花籽', '从画里掉出来的。捏一捏，是真的。'],
   seal_t: ['印章·时', '刻着一只没有指针的钟。'],
@@ -124,20 +131,23 @@ function sfx(k) {
   if (k === 'bad') badN++;
   if (!ac || muted) return;
   try {
-    const seq = { tap: [1200], click: [330], pick: [660, 880], win: [523, 659, 784, 1047], bad: [160, 120], step: [220] }[k] || [440];
-    seq.forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * .09; o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(k === 'tap' ? .012 : .035, t); g.gain.exponentialRampToValueAtTime(.0005, t + .14); o.connect(g); g.connect(master); o.start(t); o.stop(t + .16); });
+    const seq = { tap: [1200], click: [330], pick: [660, 880], win: [523, 659, 784, 1047], stamp: [392, 523, 659, 784, 1047, 1319], bad: [160, 120], step: [220] }[k] || [440];
+    // 点击类用三角波（柔和），成功和出错保留方波；每个音都有 6ms 起音，避免「啪」的爆音
+    const big = k === 'stamp', soft = k !== 'win' && k !== 'bad' && !big, peak = k === 'tap' ? .02 : soft ? .07 : .03;
+    seq.forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * (big ? .075 : k === 'win' ? .08 : .07), len = big || k === 'win' ? (i === seq.length - 1 ? (big ? .9 : .45) : .16) : .12;
+      o.type = soft ? 'triangle' : 'square'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(peak, t + .006); g.gain.exponentialRampToValueAtTime(.0005, t + len); o.connect(g); g.connect(master); o.start(t); o.stop(t + len + .02);
+      if (big && i === seq.length - 1) [f / 2, f * 3 / 4].forEach(h => { const o2 = ac.createOscillator(), g2 = ac.createGain(); o2.type = 'triangle'; o2.frequency.value = h; g2.gain.setValueAtTime(.0001, t); g2.gain.linearRampToValueAtTime(.05, t + .01); g2.gain.exponentialRampToValueAtTime(.0005, t + len); o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + len + .02); }); });
   } catch (e) {}
 }
 let alarmT = null;
 function quiet(msg) { S.f.quiet = 1; alarm(); talk([msg, { who: '温控器', t: '……安静了。谢谢。现在可以倒水了。' }]); save(); }
 function alarm() {   // 冷却井的警报：进门就响，关掉声音才停
-  const on = S.v === 'shaft' && !S.f.quiet && $('title').hidden;
+  const on = false;
   if (on && !alarmT) alarmT = setInterval(() => { if (ac && !muted) try { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = 'square'; o.frequency.value = 1400; g.gain.setValueAtTime(.02, t); g.gain.exponentialRampToValueAtTime(.0005, t + .25); o.connect(g); g.connect(master); o.start(t); o.stop(t + .3); } catch (e) {} }, 900);
   if (!on && alarmT) { clearInterval(alarmT); alarmT = null; }
 }
 function tone(on) { try { if (mTone) mTone.gain.setTargetAtTime(on && !muted ? .04 : 0, ac.currentTime, .005); } catch (e) {} }
 function setMute(m) {
-  if (m && S.v === 'shaft' && !S.f.quiet) setTimeout(() => quiet('你把声音关掉了。警报停了。'), 0);
   muted = m; $('bSnd').textContent = '声音：' + (m ? '关' : '开');
   try { localStorage.setItem(KEY + '-mute', m ? '1' : '0'); } catch (e) {}
   try { if (master) master.gain.value = m ? 0 : 1; if (bgm) m ? bgm.pause() : bgm.play().catch(() => {}); } catch (e) {}
@@ -176,7 +186,7 @@ const ECHO = {
   l: () => [Z('这个星座，星图上没有名字。'), Z('是你连出来的，就归你取名。不着急，下次来的时候再告诉我。'), Z('……星图上没有名字的，也是星。我最近总在想这句话。')]
 };
 function seal(k, how) {
-  S.f['seal_' + k] = 1; give('seal_' + k); sfx('win');
+  S.f['seal_' + k] = 1; give('seal_' + k); sfx('stamp');
   talk([how, Z(praise())].concat(askPawn(k)).concat([{ fn: () => { talk([Z({ take: '记下了。赎回的东西，后舱会替你备好。', leave: '记下了。留下的东西，站里会一直替你收着。', give: '记下了。它会顺着下一班补给船出发。' }[S.ch[k]] || '记下了。')].concat(ECHO[k]())); } }]));
 }
 function route() {
@@ -290,7 +300,7 @@ function drawDock() {
   r(121, 95, 44, 18, PP[2]); r(120, 94, 44, 18, PP[0]); r(120, 94, 44, 3, RD[2]); for (let i = 0; i < 4; i++) r(124, 99 + i * 3, 34 - (i % 2) * 8, 1, MT[2]);
   r(118, 93, 6, 3, 'rgba(240,230,190,.7)'); r(158, 93, 6, 3, 'rgba(240,230,190,.7)');
   ctx.restore();
-  hot(120, 94, 44, 18, 'look', '告示：「本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。印章依次领取：先时，再声，后光。」', '告示');
+  hot(120, 94, 44, 18, 'notice', '', '告示');
 
   // 储物柜：机身、三扇门、通风百叶、门牌、把手
   r(12, 40, 76, 82, MT[0]); bevel(14, 42, 72, 78, MT, 2);
@@ -584,9 +594,10 @@ function drawBack() {
   r(132, 98, 56, 18, '#f6e4d0'); r(132, 98, 56, 1, '#fff6ea'); r(132, 108, 56, 3, '#e8a0b8'); for (let i = 0; i < 7; i++) { r(134 + i * 8, 98, 4, 3 + (i % 2) * 2, '#e8a0b8'); }
   r(142, 84, 36, 14, '#fff0e0'); r(142, 84, 36, 1, '#ffffff'); r(142, 92, 36, 2, '#e8a0b8'); for (let i = 0; i < 5; i++) r(144 + i * 7, 84, 3, 2 + (i % 2) * 2, '#e8a0b8');
   [[146, 82], [174, 82], [136, 96], [184, 96]].forEach(([x, y]) => { r(x - 2, y - 1, 4, 3, RD[3]); px(x - 1, y - 1, RD[4]); px(x, y - 2, GR[3]); });
-  const n = 1 + S.stars.length;
+  const n = 1 + (S.f.lit || S.f.end ? S.stars.length : 0);   // 星屑放上去之前，蛋糕上只有一根蜡烛
   for (let i = 0; i < n; i++) { const x = 160 - (n - 1) * 4 + i * 8; r(x - 1, 74, 2, 10, [CY[3], PU[3], GR[3], YL[2]][i]); r(x - 1, 74, 1, 10, '#ffffff'); if (E) { r(x - 1, 70 - (tick % 2), 2, 3, YL[3]); px(x - 1 + (tick % 2), 69 - (tick % 2), '#ffffff'); soft(x, 70, 8, '255,210,120', .5); } }
   hot(124, 66, 72, 58, 'cake', '', '蛋糕');
+  { const op = S.hd && S.hd.done === 1; r(250, 140, 34, 3, '#2a1018'); bevel(252, op ? 128 : 122, 30, op ? 4 : 18, WD, 2); bevel(252, 132, 30, 10, WD, 2); if (!op) for (let i = 0; i < 4; i++) { r(256 + i * 6, 127, 4, 6, '#1a0c10'); r(256 + i * 6, 127, 4, 1, YL[1]); } else { r(256, 129, 22, 4, PP[0]); } hot(248, 118, 40, 28, 'hdopen', '', op ? '小木盒（开着）' : '小木盒'); }
   r(70, 132, 14, 4, WD[3]); r(70, 112, 3, 22, WD[2]); r(70, 112, 14, 3, WD[3]); r(82, 136, 2, 26, WD[2]); r(70, 136, 2, 26, WD[2]);
   dust(1100, 90, 20, 140, 100, 10, '255,230,200');
 }
@@ -600,15 +611,17 @@ function goal() {   // [这一步做什么, 去哪个舱段, 更直白的第二�
     case 1: return !seen('glass') ? ['去温室，看看玻璃幕墙上映着的那座钟指着几点。', 'green', '温室左边那一大块玻璃。点它。']
       : ['回当铺，把停了的座钟拨到正确的时间，再拉一下钟摆。玻璃里的钟，是镜子里的样子。', 'shop', '镜子里是 8 点 20 分，真正的时间是 3 点 40 分。'];
     case 2: return !S.f.scale ? ['站里的主电断了。先去当铺的天平，从九枚硬币里找出那枚假币。', 'shop', '点硬币放上左盘或右盘，按「称一次」。只能称两次。']
-      : !S.f.fuseIn ? ['假币里藏着一片保险丝。去机房，把它插进配电板的插槽。', 'core', '在下方物品栏选中保险丝，再点配电板左上角的插槽。']
+      : !S.f.fuseIn ? ['假币里藏着那根备用保险丝。去机房，把它插进配电板的插槽。', 'core', '在下方物品栏选中保险丝，再点配电板左上角的插槽。']
       : ['配电板上的电表记录里，有一路的用电比铭牌多。找出它，别让它合着，再合总闸。', 'core', '对不上的两条记录都含「温室摄像」。拉下它，其余四路合上。'];
     case 3: return !S.f.water ? ['灯亮了。去温室打开喷淋，让花开起来。', 'green', '喷淋开关在温室右边的墙上。']
       : !seen('radio') ? ['码头小艇上的收音机有三个频道，各播一个数字的电码。去听一听，对照当铺的电码表译出来。', 'dock', '码头右边的小艇，点它。']
       : ['把三个数字按温室花槽从左到右的颜色排好，去机房打开保险柜。', 'core', '花槽从左到右是红、紫、黄；对应红灯、紫灯、黄灯三个频道。'];
-    case 4: return !S.f.locker ? ['去观星台数一数星图上三个星座各有几颗星，再到码头，按储物柜门上图案的顺序拨密码。', !seen('chart') ? 'obs' : 'dock', '亮的点才是星。柜门上的图案从左到右，就是三个数字的顺序。']
+    case 4: if (!S.f.nt1) return S.f.nt1Ask ? ['码头告示栏最底下那一行只有三格：零要读到「早安」，螺丝要读到「晚安」。', 'dock', '零看不见红字，螺丝看不见蓝字。两句都有的「安」用黑笔写一次。'] : ['回到地图上。零有件小事想请你帮忙。', '', ''];
+      return !S.f.locker ? ['去观星台数一数星图上三个星座各有几颗星，再到码头，按储物柜门上图案的顺序拨密码。', !seen('chart') ? 'obs' : 'dock', '亮的点才是星。柜门上的图案从左到右，就是三个数字的顺序。']
       : !S.f.lens ? ['把储物柜里的镜片装回观星台的望远镜。', 'obs', '在物品栏选中镜片，再点望远镜。']
       : ['望远镜里的星座是倒着的。去观星台的控制台，把它正过来连好。', 'obs', '折射式望远镜看到的上下左右都是反的。'];
-    case 5: return !S.route ? ['回到地图上。零有话要问你。', '', '']
+    case 5: return !S.route ? (!S.f.nt2 ? (S.f.nt2Ask ? ['码头告示栏那一行有十格：螺丝要读到零的通知，零要读到螺丝的回话。', 'dock', '两句按顺序都有的「别、了、出、来」用黑笔；只给零看的用蓝笔，只给螺丝看的用红笔。'] : ['回到地图上。零有话要说。', '', ''])
+        : !S.f.night ? ['零想把断电那一晚拼起来。回到地图上，点下方的「帮零排一排那一晚」。', '', ''] : ['回到地图上。零有话要问你。', '', ''])
       : { z: ['零想不起是谁切断了主电。去机房，从主机底座进入它的日志。', 'core', ''], c: ['跟螺丝走：温室的通风口。', 'green', ''], l: ['去当铺，柜台后面有一扇写着「档案」的门。', 'shop', ''] }[S.route];
     case 6: return ['三枚印章和通行章都齐了。去机房的舱门验印。', 'core', ''];
     default: return ['后舱的门开了。去看看。', 'back', ''];
@@ -642,8 +655,25 @@ function fact(k, who = Z) {
 const V = {};
 const reg = (id, o) => { V[id] = o; };
 
-reg('map', { name: '全站地图', desc: () => '零号站的结构图。五个舱段围着中枢，点一个舱段就能过去。' + (S.f.gate ? '后舱的灯亮了。' : '还有一个舱段没有亮灯。'),
+reg('dark', { name: '……', parent: null, desc: () => '黑。很冷。耳边有嗡嗡声。',
+  draw() {   // 鼠标是一小圈光：移到哪里，哪里亮一点；开关在正中间
+    r(0, 0, W, H, '#000000');
+    const lx = mx, ly = my, R = 26;
+    if (lx >= 0) {
+      ctx.save(); ctx.beginPath(); ctx.arc(lx, ly, R, 0, 6.283); ctx.clip();
+      r(0, 0, W, H, '#151b28'); for (let y = 8; y < H; y += 30) r(0, y, W, 1, '#202736'); for (let x = 12; x < W; x += 48) r(x, 0, 1, H, '#141821');
+      for (let k = 0; k < 18; k++) { const x = (k * 53) % W, y = (k * 37 + 11) % H; r(x, y, 2, 2, '#1c2130'); }
+      bevel(150, 80, 20, 24, MT, 2); r(157, 85, 6, 14, '#07090f'); r(158, 87, 4, 6, MT[4]); r(158, 87, 4, 1, '#ffffff');
+      ctx.restore();
+      const g = ctx.createRadialGradient(lx, ly, R * .35, lx, ly, R); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.92)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(lx, ly, R + .5, 0, 6.283); ctx.fill();
+      if (Math.hypot(lx - 160, ly - 92) < R) { hot(150, 80, 20, 24, 'dk', '', null); hots[hots.length - 1].hide = 1; }
+    }
+    if (tick - (S.dkT || 0) > 120) { ctx.globalAlpha = .35; txt('……开关好像在正中间。', 160, 160, 7, 4, 'center', false); ctx.globalAlpha = 1; }
+  } });
+reg('map', { name: '全站地图', desc: () => '零号站的结构图。五个舱段围着中枢，点一个亮着的舱段就能过去。' + (S.f.gate ? '所有舱段都亮了。' : '还有 ' + (1 + !(S.f.seal_t || S.f.power) + !S.f.power) + ' 个舱段黑着灯。'),
   draw() {
+    const coreLit = !!(S.f.seal_t || S.f.power), obsLit = !!S.f.power;
     r(0, 0, W, H, 0); starfield(7, 150, 0, 0, W, H);
     circ(262, 150, 30, 2); circ(268, 156, 30, 0);                // 远处的行星
     const cor = (x, y, w, h) => { r(x, y, w, h, 2); r(x, y, w, 1, 3); };
@@ -658,10 +688,12 @@ reg('map', { name: '全站地图', desc: () => '零号站的结构图。五个�
     mod(36, 68, 50, 40, 3, 4, 'dock', '码头'); r(18, 80, 18, 14, 4); r(14, 84, 4, 6, 5); r(22, 83, 6, 4, 1);          // 小艇
     mod(98, 18, 60, 36, 10, 9, 'shop', '当铺'); circ(128, 32, 5, 7); r(127, 26, 2, 3, 7); circ(128, 32, 2, 10);
     mod(174, 16, 62, 40, 11, 12, 'green', '温室'); r(190, 26, 2, 12, 12); r(186, 24, 10, 4, 12); r(210, 28, 2, 10, 12); r(207, 26, 8, 3, 12);
-    circ(270, 88, 22, 4); circ(270, 88, 19, 1); starfield(3, 14, 256, 74, 28, 28); hot(248, 66, 44, 44, 'go', 'obs', '观星台'); r(250, 98, 40, 12, 3); for (let i = 0; i < 4; i++) r(254 + i * 9, 102, 4, 4, 7);
-    mod(166, 126, 54, 38, 2, 5, 'core', '机房'); circ(193, 141, 6, S.f.power ? 5 : 3); px(193, 141, 6);
+    if (obsLit) { circ(270, 88, 22, 4); circ(270, 88, 19, 1); starfield(3, 14, 256, 74, 28, 28); hot(248, 66, 44, 44, 'go', 'obs', '观星台'); r(250, 98, 40, 12, 3); for (let i = 0; i < 4; i++) r(254 + i * 9, 102, 4, 4, 7); }
+    else { circ(270, 88, 22, 2); circ(270, 88, 19, 1); r(250, 98, 40, 12, 2); r(266, 84, 6, 8, 2); hot(248, 66, 44, 44, 'look', '一个圆顶的舱段，黑着灯。穹顶的玻璃后面什么也看不见。', '？？？'); }
+    mod(166, 126, 54, 38, 2, 5, coreLit ? 'core' : null, '机房', coreLit); if (coreLit) { circ(193, 141, 6, S.f.power ? 5 : 3); px(193, 141, 6); } else { hot(166, 126, 54, 38, 'look', '机房一片漆黑，只有门缝里透出一点待机灯。零：「先去温室和当铺吧。」', '？？？'); r(189, 138, 6, 8, 2); }
     mod(100, 130, 50, 34, 8, 7, S.f.gate ? 'back' : null, '后舱', !!S.f.gate); if (!S.f.gate) { hot(100, 130, 50, 34, 'look', '这个舱段没有亮灯，门从机房那一侧锁着。', '？？？'); r(122, 142, 6, 8, 2); }
   },
+  btns: () => chap() === 5 && !S.route && S.f.nt2 && !S.f.night ? [['帮零排一排那一晚', 'nightgo']] : [],
   hint: () => ['下一步：' + goal()[0], goal()[2] || ('下一步：' + goal()[0])] });
 
 reg('dock', { name: '码头', parent: 'map', desc: () => '你的小艇泊在窗外。左边一排储物柜，右边一台贴着「故障」的自动贩卖机。',
@@ -683,11 +715,11 @@ reg('obs', { name: '观星台', parent: 'map', desc: () => '穹顶外是一整�
 
 reg('core', { name: '机房', parent: 'map', desc: () => S.f.power ? '主机的光稳定下来了。零在看着你。' : '机房里很暗。中间的主机只剩一点微光，左边墙上是配电板。',
   draw() { drawCore(); },
-  hint: () => [!S.f.power ? '配电板缺一根保险丝。当铺的天平上，有一枚硬币不太对劲。' : !S.f.seal_s ? '保险柜要三位数字。零把它存进了三段广播里，小艇的收音机收得到。' : '集齐三枚印章就去点舱门。', !S.f.power ? '当铺天平找出假币（保险丝藏在里面）→ 回来装上并接通线路。' : '温室通电浇花，记下三槽花的颜色顺序 → 小艇收音机按这个顺序听三个频道 → 对照当铺的电码表 → 保险柜。'] });
+  hint: () => [!S.f.power ? '配电板缺一根保险丝。当铺的天平上，有一枚硬币不太对劲。' : !S.f.seal_s ? '保险柜要三位数字。零把它存进了三段广播里，小艇的收音机收得到。' : '集齐三枚印章就去点舱门。', !S.f.power ? '当铺天平找出假币（保险丝藏在里面）→ 回来装上，对照电表记录找出多吃电的那一路。' : '温室通电浇花，记下三槽花的颜色顺序 → 小艇收音机按这个顺序听三个频道 → 对照当铺的电码表 → 保险柜。'] });
 
-reg('back', { name: '后舱', parent: 'map', desc: () => '很小的一间舱室。桌上放着一只蛋糕，不为哪一天，只为你来了。',
+reg('back', { name: '后舱', parent: 'map', desc: () => '很小的一间舱室。桌上放着一只蛋糕，不为哪一天，只为你来了。' + (S.hd && S.hd.done === 1 ? '' : '墙角还有一只上了字锁的小木盒。'),
   draw() { drawBack(); },
-  hint: () => S.stars.length && !S.f.lit && S.f.cakeTry ? ['这一题要动的是网页本身：把屏幕上方的 ✦ 拖到蛋糕上。', '按住 ✦ 不放，拖到蛋糕上再松手。实在不行，再点一次蛋糕，零会替你放。'] : ['点一下蛋糕。', '点一下蛋糕。'] });
+  hint: () => S.stars.length && !S.f.lit && S.f.cakeTry ? ['按住屏幕右上角的 ✦，拖到蛋糕上再松手。', '拖不动的话，再点一次蛋糕，零会替你放上去。'] : ['点一下蛋糕。', '点一下蛋糕。'] });
 
 /* ---------- 特写 ---------- */
 reg('scale', { name: '天平', parent: 'shop', desc: () => S.f.scale ? '假币已经找到了。' : '九枚硬币里有一枚略轻。点硬币可以把它放上左盘、右盘或放回托盘。天平只借两次。',
@@ -796,7 +828,7 @@ reg('morse', { name: '电码表', parent: 'shop', desc: () => '一张旧式数�
 // 配电板：断电前的电表记录里，有两条读数和铭牌对不上。多吃电的是「温室摄像」那一路（清洁臂动过手脚）。
 const BRK = [['码头', 2], ['当铺', 2], ['温室灯', 3], ['温室摄像', 1], ['观星台', 2]], BRK_REAL = [2, 2, 3, 5, 2], FUSE_MAX = 10, BRK_OK = [1, 1, 1, 0, 1];
 const TAPE = [[[0, 1, 2], 7], [[1, 3, 4], 9], [[0, 3], 7], [[2, 4], 5]];
-reg('tiles', { name: '配电板', parent: 'core', desc: () => S.f.power ? '五路闸里，四路合着，「温室摄像」那一路拉着。' : S.f.fuseIn ? '五路分闸，每路的铭牌上写着它该用几格电。保险丝最多扛 10 格。右边夹着一卷断电前的电表记录。合好分闸，再合总闸。' : '五路分闸，每路的铭牌上写着它该用几格电。总闸下面的保险丝插槽是空的。',
+reg('tiles', { name: '配电板', parent: 'core', desc: () => S.f.power ? '五路闸里，四路合着，「温室摄像」那一路拉着。' : S.f.fuseIn ? '五路分闸，每路的铭牌上写着它该用几格电。保险丝最多扛 10 格。右边夹着一卷断电前的电表记录。合好分闸，再合总闸。' : '五路分闸，每路的铭牌上写着它该用几格电。总闸下面的保险丝插槽空着：烧断的旧保险丝被人拔走了，备件柜里那根备用的也不见了。',
   draw() {
     r(0, 0, W, H, MT[0]); bevel(10, 8, 206, 164, MT, 2); r(14, 12, 198, 156, MT[1]);
     // 保险丝和总闸
@@ -976,17 +1008,30 @@ reg('inner', { name: '主机日志', parent: 'core', desc: () => S.f.pass ? '日
   hint: () => ['只有一条是真话。逐个假设谁是真凶，看哪种情况下恰好只有一条为真。', '假设是清洁臂：它自己的话是假的，导航副机的话是假的，温控器的话是真的。恰好一条。'],
   skip() { A.culprit(0); } });
 
+const RULE = '未登记的机械体回收不得留下';
+reg('rule', { name: '旧规程', parent: 'inner', desc: () => S.f.pass ? '规程已经归档。' : '一张发黄的手抄规程，一个标点也没有。字不能改，但可以在字与字之间点上逗号。点两字之间的空隙，就放上或拿掉一个逗号。',
+  draw() {
+    r(0, 0, W, H, 0); r(34, 46, 256, 70, PP[1]); r(32, 44, 256, 70, PP[0]); r(32, 44, 256, 2, '#c8b890'); txt('站规 · 第七条', 160, 52, 8, '#6a5a50', 'center');
+    const n = RULE.length, cw = 17, x0 = 160 - (n * cw) / 2, done = S.f.ruleOK ? Math.min(1, (tick - S.f.ruleOK) / 8) : 0;
+    [...RULE].forEach((ch, i) => { txt(ch, x0 + i * cw + cw / 2, 74, 12, '#2a1e16', 'center'); });
+    for (let i = 0; i < n - 1; i++) { const gx = x0 + (i + 1) * cw; if (S.rk2.includes(i)) { ctx.globalAlpha = S.f.ruleOK ? 1 : .95; txt('，', gx + 2, 76, 11, '#2a1e16', 'center'); ctx.globalAlpha = 1; } if (!S.f.pass) hot(gx - 5, 66, 10, 24, 'rcomma', i, '逗号'); }
+    txt('。', x0 + n * cw + 3, 76, 11, '#2a1e16', 'center');
+    if (done > 0) { ctx.globalAlpha = done; txt('原文一字未改', 280, 100, 7, '#6a5a50', 'right', false); ctx.globalAlpha = 1; }
+  },
+  btns: () => S.f.pass || S.f.ruleOK ? [] : [['照这样读', 'rread'], ['擦掉标点', 'rclr']],
+  hint: () => ['「回收不得」四个字连在一起读，是什么意思？', '在「不得」后面点一个逗号：未登记的机械体回收不得，留下。「回收不得」就是不能回收。'],
+  skip() { S.rk2 = [6, 10]; A.rread(); } });
 const TILES9 = ['好', '林', '休', '思', '息', '明', '体', '想', '安'], WORD_OK = '好好休息';
-const RIDDLE = ['箱子上的粉笔字：「女儿和儿子站在一起。这个字，要用两遍。」', '箱子上的粉笔字：「一个人，靠着一棵树。」', '箱子上的粉笔字：「自己的心。」'];
-reg('cargo', { name: '货舱', parent: 'green', desc: () => S.f.pass ? '螺丝的窝敞着，里面堆满了别人落下的小东西。' : '通风管的尽头是一间货舱。三只小箱子上各有一行粉笔字，最大的那只箱子上了一把字锁。',
+const RIDDLE = ['箱子上的粉笔字：「失物，待领。」', '箱子上的粉笔字：「失物，待领。」底下有一个小小的爪印。', '箱子上的粉笔字歪歪扭扭的：「别开。」'];
+reg('cargo', { name: '货舱', parent: 'green', desc: () => S.f.pass ? '螺丝的窝敞着，里面堆满了别人落下的小东西。' : '通风管的尽头是一间货舱。墙边堆着几只小箱子，最大的那只盖着一条旧毛毯。',
   draw() {
     room(1, 0, 13, 0); r(130, 6, 60, 10, 0); for (let i = 0; i < 6; i++) r(134 + i * 9, 6, 2, 10, 3);
     [[30, 78], [118, 84], [206, 78]].forEach(([x, y], i) => { r(x, y, 50, 40, 14); r(x, y, 50, 2, 8); r(x + 4, y + 6, 42, 2, 13); r(x + 4, y + 30, 42, 2, 13); r(x + 10, y + 13, 30, 12, 6); for (let j = 0; j < 3; j++) r(x + 13, y + 16 + j * 3, 20 - j * 4, 1, 0); hot(x, y, 50, 40, 'look', RIDDLE[i], '小箱子'); });
     r(262, 60, 52, 60, 13); r(262, 60, 52, 3, 14); r(262, 88, 52, 3, 14); r(280, 80, 16, 14, S.f.pass ? 0 : 7); if (S.f.pass) { r(266, 64, 44, 22, 0); r(270, 78, 10, 6, 9); r(284, 76, 8, 8, 5); r(296, 79, 9, 5, 12); }
-    hot(262, 60, 52, 60, 'go', 'crate', '大箱子');
-    catAt(150, 110); hot(146, 106, 22, 16, 'pet', '', '螺丝');
+    hot(262, 60, 52, 60, S.f.pass ? 'look' : 'ventgo', S.f.pass ? '毛毯边上有一行方方正正的粉笔字：好好休息。' : '', '大箱子');
+    if (S.f.pass || !S.f.ventIn) { catAt(150, 110); hot(146, 106, 22, 16, 'pet', '', '螺丝'); }
   },
-  hint: () => ['三条粉笔字都是字谜：把两个字拼成一个字。', '女＋子＝好，人＋木＝休，自＋心＝息。'] });
+  hint: () => ['点一下最大的那只箱子。', '螺丝要你先找到它，才肯打开。'] });
 reg('crate', { name: '字锁', parent: 'cargo', desc: () => S.f.pass ? '锁开着。' : '锁上有四个空格，要填四个字。现在是：' + (S.word.join(' ') + ' ＿ ＿ ＿ ＿').trim().split(' ').slice(0, 4).join(' '),
   draw() { r(0, 0, W, H, 13); r(40, 30, 240, 120, 14); r(40, 30, 240, 3, 8); for (let i = 0; i < 4; i++) { r(64 + i * 50, 64, 42, 52, 0); r(66 + i * 50, 66, 38, 48, i < S.word.length || S.f.pass ? 7 : 1); if (i < S.word.length || S.f.pass) { r(72 + i * 50, 74, 26, 32, 6); ctx.fillStyle = PAL[0]; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(S.f.pass ? WORD_OK[i] : S.word[i], 85 + i * 50, 91); } } },
   btns: () => S.f.pass ? [] : TILES9.map(t => [t, 'tile9', t]).concat([['清除', 'wordclr']]),
@@ -1006,7 +1051,94 @@ reg('archive', { name: '档案室的门', parent: 'shop', desc: () => S.f.pass ?
   hint: () => ['答案只有你自己知道：三张当票，你当初各是怎么处置的？每一次零都说过「记下了」。', '零替你查了登记簿：' + ['t', 's', 'l'].map((k, i) => ['时', '声', '光'][i] + '——' + (S.ch[k] ? DIALOPT[CH.indexOf(S.ch[k])] : '还没处置')).join('，') + '。'],
   skip() { S.dial = ['t', 's', 'l'].map(k => Math.max(0, CH.indexOf(S.ch[k]))); A.drawer(); } });
 
-function getPass(lines) { talk(lines.concat([Z(praise()), { fn: () => { S.f.pass = 1; give('pass'); sfx('win'); save(); } }])); }
+/* ================= Q 通风管里找螺丝：六个口连成一圈，三声定出两条路，一片纸板分清是哪条 ================= */
+const VNAME = ['码头', '当铺', '温室', '观星台', '机房', '后舱'], VSND = 'DKDKHH', VSNDN = { D: '滴水声', K: '咔哒声', H: '嗡嗡声' }, VSEQ = ['DKD', 'KDK'];
+const ventCands = seq => { const out = []; for (let q = 0; q < 6; q++) for (const d of [1, -1]) { const path = [0, 1, 2].map(i => (q + d * i + 12) % 6); if (path.map(x => VSND[x]).join('') === seq) out.push({ path, next: (path[2] + d + 6) % 6 }); } return out; };
+function ventNew() { S.vt = { seq: VSEQ[Math.floor(Math.random() * 2)], real: Math.floor(Math.random() * 2), card: -1, waited: 0, step: 0 }; }
+const VPOS = i => { const a = [180, 240, 300, 0, 60, 120][i] * Math.PI / 180; return [96 + 70 * Math.cos(a), 92 + 56 * Math.sin(a)]; };
+reg('vent', { name: '通风管', parent: 'cargo',
+  desc: () => '六个通风口连成一圈。螺丝每分钟跑到相邻的下一个口，一直朝同一个方向，不停，也不掉头。它每到一个口就拍一下栅栏，你能听见那间舱段的声音：码头的贩卖机和温室的喷淋在滴水，当铺的座钟和观星台的马达在咔哒响，机房和后舱的机器在嗡嗡响。',
+  draw() {
+    if (!S.vt) ventNew(); const v = S.vt, sc = { D: CY[3], K: YL[3], H: PU[3] };
+    r(0, 0, W, H, '#0e1220'); for (let y = 0; y < H; y += 10) r(0, y, 196, 1, '#121728');
+    ctx.strokeStyle = '#2b3358'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(96, 92, 70, 56, 0, 0, 6.283); ctx.stroke(); ctx.strokeStyle = '#151a2c'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(96, 92, 70, 56, 0, 0, 6.283); ctx.stroke();
+    for (let i = 0; i < 6; i++) { const [x, y] = VPOS(i), c = sc[VSND[i]], top = y < 92;
+      bevel(x - 14, y - 9, 28, 18, MT, 2); for (let k = 0; k < 4; k++) r(x - 10, y - 6 + k * 4, 20, 1, '#07090f');
+      if (v.card === i) { r(x - 10, y - 7, 20, 14, '#d8c49a'); r(x - 10, y - 7, 20, 1, '#efe0bc'); r(x - 10, y + 6, 20, 1, '#a8946a'); if (v.waited && v.step) { r(x - 2, y - 1, 4, 4, '#3a2a1a'); [[-4, -4], [-1, -6], [2, -6], [5, -4]].forEach(([a, b]) => r(x + a - 1, y + b, 2, 2, '#3a2a1a')); } }
+      txt(VNAME[i], x, top ? y - 29 : y + 11, 7, 5, 'center'); txt(VSNDN[VSND[i]], x, top ? y - 20 : y + 19, 7, c, 'center', false);
+      hot(x - 15, y - 10, 30, 20, v.waited ? 'vopen' : 'vcard', i, v.waited ? '掀开' + VNAME[i] + '的通风口' : '把纸板放在' + VNAME[i]); }
+    r(200, 6, 114, 168, 1); r(200, 6, 114, 11, 2); txt('你听到的', 204, 8, 7, 5);
+    [...v.seq].forEach((c, k) => { txt('第 ' + (k + 1) + ' 分钟', 206, 22 + k * 12, 7, 4, 'left', false); txt(VSNDN[c], 250, 22 + k * 12, 7, sc[c], 'left', false); });
+    txt('第 3 声就是它现在的位置。', 206, 58, 7, 4, 'left', false); txt('之后它不再拍栅栏了。', 206, 68, 7, 4, 'left', false);
+    r(204, 82, 106, 1, 2);
+    const say2 = v.card < 0 ? ['你只有一片涂了记号笔的', '纸板。点一个通风口，', '把它放上去。'] : !v.waited ? ['纸板放在' + VNAME[v.card] + '。', '螺丝跑到那里，就会', '留下爪印。按「等一分钟」。'] : ['一分钟过去了。', '纸板上' + (v.step ? '有一个小爪印。' : '干干净净。'), '现在掀开一个通风口。', '只能掀一次。'];
+    say2.forEach((t, k) => txt(t, 206, 88 + k * 11, 7, v.waited && k === 1 ? 7 : 6, 'left', false));
+  },
+  btns: () => S.vt && S.vt.card >= 0 && !S.vt.waited ? [['等一分钟', 'vwait']] : [],
+  hint: () => { const cs = ventCands(S.vt ? S.vt.seq : 'DKD'), snd = [...(S.vt ? S.vt.seq : 'DKD')].map(c => VSNDN[c]).join('、');
+    return ['先别急着放纸板。在圈上找：哪几段连着的三个口，会依次响出「' + snd + '」？它可能顺着跑，也可能逆着跑。', '只有两条路：' + cs.map(c => c.path.map(k => VNAME[k]).join('→') + '（下一分钟到' + VNAME[c.next] + '）').join('；或者 ') + '。纸板放在' + VNAME[cs[0].next] + '或' + VNAME[cs[1].next] + '，踩没踩到都分得清。']; },
+  sol: () => { const cs = ventCands(S.vt ? S.vt.seq : 'DKD'); return '<p>能依次响出这三声的路只有两条：' + cs.map(c => '<b>' + c.path.map(k => VNAME[k]).join('→') + '</b>，下一分钟到' + VNAME[c.next]).join('；') + '。</p><p>把纸板放在<b>' + VNAME[cs[0].next] + '</b>（或' + VNAME[cs[1].next] + '）。有爪印，它就在那儿；没有，它就在另一处。放在别的地方，纸板永远是干净的，什么也分不出来。</p>'; },
+  skip() { const v = S.vt, cs = ventCands(v.seq); v.card = cs[0].next; v.waited = 0; A.vwait(); A.vopen(cs[v.real].next); } });
+
+/* ================= 双面告示（P′）：零的摄像头是红镜片，看不见红字；螺丝的眼睛是蓝镜片，看不见蓝字 ================= */
+const NB = { 1: { n: 3, z: '早安', c: '晚安', pal: '晚安早', sol: [['早', 'b'], ['晚', 'r'], ['安', 'k']] },
+  2: { n: 10, z: '别找了我不出来', c: '别躲了出来登记', pal: '出别登我了来找记不躲', sol: [['别', 'k'], ['躲', 'r'], ['找', 'b'], ['了', 'k'], ['我', 'b'], ['不', 'b'], ['出', 'k'], ['来', 'k'], ['登', 'r'], ['记', 'r']] } };
+const INK = { r: '#c8504a', b: '#3a64c8', k: '#1d1d24' }, INKN = { r: '红笔', b: '蓝笔', k: '黑笔' };
+const nbSt = () => S.f.nt1 ? 2 : 1;
+const nbRead = see => S.nb.filter(c => see.includes(c[1])).map(c => c[0]).join('');
+const nbZ = () => nbRead('bk'), nbC = () => nbRead('rk');   // 零看得见蓝和黑；螺丝看得见红和黑
+reg('board', { name: '告示栏', parent: 'dock',
+  desc: () => nbSt() === 1 ? '告示栏最底下那一行只有 3 格。零要读到「早安」，螺丝要读到「晚安」。零的摄像头是红镜片，看不见红字；螺丝的眼睛是蓝镜片，看不见蓝字。先点一支笔，再点字；点印好的字可以撤掉。'
+    : '还是那一行，这次有 10 格。螺丝要读到零的通知「别躲了出来登记」，零要读到螺丝的回话「别找了我不出来」。',
+  draw() {
+    const g = NB[nbSt()], n = g.n, cw = n > 5 ? 24 : 32, x0 = 160 - n * cw / 2;
+    r(0, 0, W, H, '#10131f'); for (let y = 0; y < H; y += 12) r(0, y, W, 1, '#141828');
+    bevel(14, 4, 292, 68, WD, 3); r(20, 10, 280, 56, '#9a7a52'); for (let k = 0; k < 40; k++) { const x = 22 + (k * 71) % 276, y = 12 + (k * 23) % 52; px(x, y, '#8a6a44'); }
+    r(28, 13, 264, 22, '#e9e4d2'); r(28, 13, 264, 1, '#ffffff'); txt('本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。', 160, 16, 7, '#6a6458', 'center', false); txt('印章依次领取：先时，再声，后光。', 160, 25, 7, '#6a6458', 'center', false);
+    r(x0 - 4, 39, n * cw + 8, 25, '#e9e4d2');
+    for (let i = 0; i < n; i++) { const x = x0 + i * cw, c = S.nb[i];
+      r(x + 1, 41, cw - 2, 21, '#f6f2e4'); if (c) { txt(c[0], x + cw / 2, 44, 14, INK[c[1]], 'center'); hot(x, 39, cw, 25, 'nbdel', i, '撤掉这个字'); } else if (i === S.nb.length) { r(x + 4, 59, cw - 8, 1, INK[S.nbInk]); } }
+    const view = (x, nm, bg, fg, see, want) => { const got = nbRead(see), ok = got === want, vw = Math.min(13, 132 / n);
+      r(x, 76, 146, 50, 1); r(x, 76, 146, 10, 2); txt(nm, x + 4, 77, 7, 5);
+      r(x + 6, 89, n * vw + 2, 14, bg); S.nb.forEach((c, i) => { if (see.includes(c[1])) txt(c[0], x + 7 + i * vw + vw / 2, 91, Math.max(7, vw - 3), fg, 'center'); });
+      txt('读出：' + (got || '（一片空白）'), x + 4, 106, 7, ok ? 12 : 6); txt('想读到：' + want, x + 4, 116, 7, 4);
+      if (ok) txt('✓', x + 138, 106, 8, 12, 'right'); };
+    view(8, '零的摄像头 · 红镜片', '#d88478', '#2a0c0c', 'bk', g.z); view(166, '螺丝的眼睛 · 蓝镜片', '#86a2dc', '#0c1430', 'rk', g.c);
+    ['r', 'b', 'k'].forEach((k, j) => { const x = 10 + j * 26, on = S.nbInk === k; r(x - 2, 132, 24, 34, on ? 7 : 1); r(x, 134, 20, 30, 2); r(x + 8, 136, 4, 16, INK[k]); r(x + 8, 152, 4, 5, '#c8c0a8'); px(x + 9, 157, '#555'); txt(INKN[k], x + 10, 157, 7, on ? 7 : 4, 'center', false); hot(x - 2, 132, 24, 34, 'nbink', k, INKN[k]); });
+    const pw = Math.min(22, 226 / g.pal.length); [...g.pal].forEach((ch, i) => { const x = 90 + i * pw; r(x, 134, pw - 2, 24, '#e9e4d2'); r(x, 134, pw - 2, 1, '#ffffff'); txt(ch, x + (pw - 2) / 2, 139, 12, INK[S.nbInk], 'center'); hot(x, 134, pw - 2, 24, 'nbput', ch, '用' + INKN[S.nbInk] + '写「' + ch + '」'); });
+    txt('先点笔，再点字。还剩 ' + (n - S.nb.length) + ' 格', 90, 164, 7, 4);
+  },
+  btns: () => S.nb.length ? [['全部撤掉', 'nbclr']] : [],
+  hint: () => nbSt() === 1 ? ['两句都有「安」，用黑笔写一次，两边都看得见。只给零看的字用蓝笔，只给螺丝看的字用红笔。', '蓝「早」、红「晚」、黑「安」。前两个换一下顺序也行。']
+    : ['两句话按顺序都有的字是「别、了、出、来」，用黑笔写；其余的字插进它们之间：只给零看的用蓝笔，只给螺丝看的用红笔。', '一种写法：黑「别」、红「躲」、蓝「找」、黑「了」、蓝「我」、蓝「不」、黑「出」、黑「来」、红「登」、红「记」。'],
+  sol: () => nbSt() === 1 ? '<p>蓝「早」、红「晚」、黑「安」（前两个可以对调）。</p><p>零的红镜片看不见红字，读到「早安」；螺丝的蓝镜片看不见蓝字，读到「晚安」。</p>'
+    : '<p>一种写法：<b>黑别 红躲 蓝找 黑了 蓝我 蓝不 黑出 黑来 红登 红记</b>。</p><p>两句按顺序都有「别、了、出、来」，这四个用黑笔，两边都看得见；只给零看的「找、我、不」用蓝笔；只给螺丝看的「躲、登、记」用红笔。7 + 7 − 4 = 10，刚好十格。摆法不止一种，只要两边读出来对就算。</p>',
+  skip() { S.nb = NB[nbSt()].sol.map(c => c.slice()); A.nbchk(); } });
+
+/* ================= 零的那一晚（B′）：四段记忆排先后 ================= */
+const NIGHT = [
+  { k: 'cab', n: '轮子声', t: ['黑了以后，我只剩耳朵。', '有轮子声经过机房，在备件柜前停了一下。'] },
+  { k: 'coin', n: '硬币', t: ['备用电池快撑不住了。', '我听到的最后一个声音，是当铺那边，硬币哗啦响了一声。'] },
+  { k: 'roll', n: '点名', t: ['点名的时候，灯都还亮着。', '清洁臂没有应，我又叫了一遍。'] },
+  { k: 'fuse', n: '保险丝', t: ['温室摄像那一路的读数一格一格往上爬。', '我正要去查，保险丝烧断了。'] }];
+const NIGHT_OK = ['roll', 'fuse', 'cab', 'coin'];
+reg('night', { name: '零的记忆', parent: 'map', desc: () => S.f.night ? '四段记忆排好了。' : '零的四段记忆，顺序乱了。按发生的先后，依次点一遍；点有编号的那段可以撤掉编号。',
+  draw() {
+    r(0, 0, W, H, '#0a0c16'); for (let k = 0; k < 30; k++) px((k * 97) % W, (k * 41) % H, '#1c2236');
+    txt('断电那一晚 · 按先后点一遍', 160, 5, 8, 5, 'center');
+    const order = S.f.night ? NIGHT_OK.map(k => NIGHT.findIndex(x => x.k === k)) : [0, 1, 2, 3];
+    order.forEach((i, row) => { const y = 20 + row * 39, num = S.no.indexOf(i), on = num >= 0 || S.f.night;
+      r(8, y, 304, 35, on ? 3 : 2); r(9, y + 1, 302, 33, on ? '#1e2744' : 1);
+      r(14, y + 8, 18, 18, on ? 7 : 2); txt(S.f.night ? String(row + 1) : on ? String(num + 1) : '？', 23, y + 12, 9, on ? 0 : 4, 'center');
+      txt(NIGHT[i].t[0], 40, y + 6, 8, on ? 6 : 5, 'left', false); txt(NIGHT[i].t[1], 40, y + 19, 8, on ? 6 : 5, 'left', false);
+      if (!S.f.night) hot(8, y, 304, 35, 'nopick', i, num >= 0 ? '撤掉这个编号' : '排在第 ' + (S.no.length + 1)); });
+  },
+  btns: () => S.f.night ? [] : (S.no.length === 4 ? [['就是这个顺序', 'nochk'], ['重排', 'noclr']] : S.no.length ? [['重排', 'noclr']] : []),
+  hint: () => ['先定最好定的两段：哪一段时灯还亮着？哪一段是「最后一个声音」？', '点名（灯还亮着）→ 保险丝烧断（就是黑了的那一刻）→ 轮子声（「黑了以后」）→ 硬币（「最后一个声音」）。'],
+  sol: () => '<p>顺序：<b>点名 → 保险丝烧断 → 轮子声 → 硬币</b>。</p><p>点名时灯还亮着，所以在烧断之前；轮子声那段开头就是「黑了以后」，所以在烧断之后；硬币是「最后一个声音」，排在最后。</p>',
+  skip() { S.no = NIGHT_OK.map(k => NIGHT.findIndex(x => x.k === k)); A.nochk(); } });
+
+function getPass(lines) { talk(lines.concat([Z(praise()), { fn: () => { S.f.pass = 1; give('pass'); sfx('stamp'); save(); } }])); }
 function events() {
   if (dOn || !$('title').hidden || !$('end').hidden || !$('slide').hidden) return;
   if (S.v === 'bunk' && !S.f.bunkIntro) {
@@ -1019,8 +1151,20 @@ function events() {
       { who: '螺丝', t: '你，不是站里的。你会告诉那个大眼睛吗？', ch: [{ t: '蹲下来，伸手让它闻一闻。', f: () => { S.aff.c += 2; } }, { t: '「大眼睛是说零吗？你为什么躲着它？」', f: () => { S.aff.c += 1; S.aff.z += 1; } }, { t: '后退一步。「我只是来取东西的。」', f: () => { S.aff.z += 1; } }] },
       C('……随你。那里待不住了，我去灯底下晒干。别踩我尾巴。')]);
   }
-  if (S.f.cat && sealsN() >= 3 && !S.route && S.v === 'map') {
-    return talk([Z('{name}，三枚印章都齐了。走之前，占用你一点时间。'), Z('我把想得起来的都排了一遍：三点四十分，主电被切断。保险丝藏进了假币，擦得干干净净。温室摄像那一路被人做了手脚。那晚的点名，清洁臂没有应。'), Z('还有一件。站里有一个没有登记的热源，一直躲着我的摄像头。'),
+  if (S.f.cat && S.f.seal_s && !S.f.nt1 && !S.f.nt1Ask && S.v === 'map') {
+    S.f.nt1Ask = 1; save();
+    return talk([Z('{name}，帮我一个小忙。码头告示栏最底下，还空着一行。'), Z('我每天早上都会看一眼告示栏。那一行要是写着「早安」，我会很高兴。'), Z('笔挂在告示栏边上，红、蓝、黑三支。断电那晚，我的白天镜头烧坏了，现在只剩夜视那一路，装的是红色镜片。隔着它，红字跟白纸一个颜色。别用红笔写给我。')]);
+  }
+  if (S.f.cat && sealsN() >= 3 && !S.f.nt2 && !S.f.nt2Ask && !S.route && S.v === 'map') {
+    S.f.nt2Ask = 1; save();
+    return talk([Z('{name}，三枚印章都齐了。走之前，再帮我一件事。'), Z('告示栏那一行，我想换成一张通知，写给那个一直躲着我摄像头的热源：「别躲了，出来登记」。'), Z('还是那三支笔，还是那一行。')]);
+  }
+  if (S.f.cat && sealsN() >= 3 && S.f.nt2 && !S.f.night && !S.f.nightIn && !S.route && S.v === 'map') {
+    S.f.nightIn = 1; save();
+    return talk([Z('通知贴好了。可我读到的，是另一句话：「别找了，我不出来」。'), Z('……{name}，在你走之前，我想把断电那一晚拼起来。'), Z('我的记忆断成了四段，顺序乱了。你帮我排一排。'), { fn: () => A.nightgo() }]);
+  }
+  if (S.f.cat && sealsN() >= 3 && S.f.night && !S.route && S.v === 'map') {
+    return talk([Z('现在我知道那一晚是怎么发生的了。可还是不知道，是谁。'), Z('还有一件事。站里有一个没有登记的热源，一直躲着我的摄像头。告示栏上那句「别找了」，大概就是它的回答。'),
       { who: '零', t: '你见过它吗？', ch: [
         { t: '「见过，在温室。是一只机械猫。」', f: () => { S.route = 'z'; S.aff.z += 2; talk([Z('谢谢你告诉我。'), Z('别担心，我不是要回收它。我想给它补一张登记卡。可规程要求我先查清一件事：是谁切断了主电。'), Z('我自己想不起来。进来帮我看看日志吧，入口在主机的底座上。')]); } },
         { t: '「没见过。」', f: () => { S.route = 'c'; S.aff.c += 2; talk([Z('……好。如果见到了，请告诉我。'), '通讯挂断以后，你的裤脚被什么东西扯了一下。', C('你没说。喵。'), C('跟我来。温室的通风口，我带你看点东西。')]); } },
@@ -1039,11 +1183,12 @@ function praise() {
 const encourage = () => pick(['（别急，' + who() + '。重来一遍，仔细看看题目和画面上的字。）', '（' + who() + '，答错会重置，不是你的错。线索可能在别的舱段，翻翻笔记。）', '（慢慢来，' + who() + '。卡住了可以点两次提示。）']);
 
 /* ================= 行为 ================= */
-function winScale() { S.f.scale = 1; S.sc.acc = false; give('fuse'); sfx('win'); say(praise() + '就是它，分量不对。掰开一看，这根本不是硬币：两片薄壳中间卷着一根保险丝。外壳被擦得锃亮，一点指纹也没有。有人把它藏进了硬币堆里，还收拾得干干净净。'); return; say('翻过来一看，这根本不是硬币，是一枚自动贩卖机的代币。'); }
+function winScale() { S.f.scale = 1; S.sc.acc = false; give('fuse'); sfx('win'); say(praise() + '就是它，分量不对。掰开一看，这根本不是硬币：两片薄壳中间卷着一根备用保险丝。外壳被擦得锃亮，一点指纹也没有。有人把它藏进了硬币堆里，还收拾得干干净净。'); return; say('翻过来一看，这根本不是硬币，是一枚自动贩卖机的代币。'); }
 function powerOn() { S.f.power = 1; S.brk = BRK_OK.slice(); sfx('win'); talk(['你把「温室摄像」那一路拉了下来，合上总闸。', '啪。整座空间站的灯依次亮了起来。', Z(praise())].concat([Z('温室摄像那一路，比铭牌多吃了四格电。像是有人故意让它把保险丝烧断。'), Z('……先不接它了。温室那边，我又成了瞎子。'),Z('……主电恢复了。谢谢你，{name}。我刚才说话是不是断断续续的？'), Z('现在温室的喷淋可以转了。另外，我左手边的保险柜里锁着一枚印章，密码我自己也忘了，只记得把它存进了三段广播里。码头小艇上的收音机收得到。')])); }
 const A = {
   box() { if (!ME) return say('柜台下面是一排保管箱，每只上面都有名牌。没有一只写着「访客」。'); S.f.box = 1; S.v = 'box'; sfx('pick'); say(V.box.desc() + ' 零说，它一直替你收着，走的时候记得带上。'); },
   pet() {
+    S.f.petN = (S.f.petN || 0) + 1; if (S.f.petN === 10) return talk(['你又摸了一下。螺丝终于忍不住，咕咚一声翻了个身，四脚朝天地躺在地上。', '它的肚皮上刻着一行很小的字：出厂日期——来日方长。', C('……看什么看。没见过猫翻身吗。')]);
     const it = ME && ME.item && !S.f.catItem;
     if (it) { S.f.catItem = 1; S.aff.c += 1; return talk([C('你身上有' + ITEMNAME[ME.item] + '的味道。'), C('是好东西。收好。')]); }
     if (S.f.cat && S.f.bunkIntro && !S.facts.includes('cat')) return talk([C('草莓？我又尝不出甜。我只是觉得它红红的，放在蛋糕上好看。')].concat(fact('cat')));
@@ -1051,8 +1196,18 @@ const A = {
   },
   culprit(i) {
     if (S.f.pass) return;
-    if (+i === 0) return getPass(['零沉默了很久。', Z('是清洁臂。它是故意的。'), Z('主电一断，我的摄像头就全黑了。旧规程写着：未登记的机械体，一律回收。它是在替那只猫关灯。'), Z('规程是我在执行，可规程不是我写的。{name}，我现在把这一条改掉。'), '主机的出卡口吐出一枚新刻的章，上面两个字：通行。']);
+    if (+i === 0) return talk(['零沉默了很久。', Z('是清洁臂。它是故意的。'), Z('主电一断，我的摄像头就全黑了。旧规程写着，未登记的机械体一律回收。它是在替那只猫关灯。'), Z('规程是我在执行，可规程不是我写的。我想改，可站规不许我改规程里的任何一个字。'), Z('……不过这一条是当年手抄的，没有标点。'), { fn: () => { S.v = 'rule'; S.rk2 = []; refresh(); } }]);
     sfx('bad'); say(+i === 1 ? '零：「如果是导航副机，那清洁臂和温控器说的就都是真话了。不对，只能有一条。」' : '零：「如果是温控器，那清洁臂和导航副机说的就都是真话了。不对，只能有一条。」');
+  },
+  rcomma(i) { if (S.f.ruleOK) return; i = +i; S.rk2 = S.rk2.includes(i) ? S.rk2.filter(x => x !== i) : S.rk2.concat(i).sort((a, b) => a - b); sfx('click'); },
+  rclr() { S.rk2 = []; },
+  rread() {
+    if (S.f.ruleOK) return; const read = [...RULE].map((ch, i) => ch + (S.rk2.includes(i) ? '，' : '')).join('') + '。';
+    const ok = S.rk2.includes(10) && S.rk2.every(i => i === 6 || i === 10);
+    if (!S.rk2.length) return say('零：「一个标点都没有，还是原来那句。读起来，就是要回收。」');
+    if (!ok) { sfx('bad'); return say('零念了一遍：「' + read + '」' + (S.rk2.includes(8) || (!S.rk2.includes(10) && S.rk2.length) ? '……还是要回收。' : '……这样读不通。')); }
+    S.f.ruleOK = tick; sfx('win');
+    getPass([Z('「' + read + '」'), Z('回收不得，留下。'), Z('一个字也没有改。'), Z('规程不是我写的，可这个标点是你点的。我会照它执行。'), '主机的出卡口吐出一枚新刻的章，上面两个字：通行。']);
   },
   tile9(t) { if (S.word.length < 4) { S.word.push(t); sfx('click'); } if (S.word.length === 4) return A.wordok(); say(V.crate.desc()); },
   wordclr() { S.word = []; say(V.crate.desc()); },
@@ -1067,7 +1222,7 @@ const A = {
     if (['t', 's', 'l'].every((k, i) => CH[S.dial[i]] === S.ch[k])) return getPass(['抽屉滑开了。里面只有一个档案袋，封面上是你的口令。', '最上面是一页事故记录：主电是清洁臂切断的，为的是让摄像头照不到一只没登记的机械猫。', '记录末尾，「处理意见」一栏空着。你看了一会儿，没有替它们填。', '再往下是你自己的当户档案。三张当票都在，' + ['t', 's', 'l'].map(k => '「' + PAWN[k].item.replace('一个', '').replace('一句', '') + '」' + { take: '已赎回', leave: '寄存', give: '已转赠' }[S.ch[k]]).join('，') + '。每一个去向，都是你自己选的。', '后面是厚厚一沓空白页。档案袋上夹着一支笔，笔杆上刻着站规的最后一条：每个人的档案，只能由本人来写。', '「通行」那一栏也空着，旁边放着一枚章。你给自己盖了章。']);
     sfx('bad'); say('这只抽屉里是别人的档案。有人把三样东西都留下了，有人全都送了出去。不是你的。');
   },
-  go(p) { if (locked(p)) { sfx('click'); return talk([Z('这个先放一放，还没到它。现在该去' + goalPlace() + '。'), Z('不知道做什么，就点「提示」。')]); } sim = null; S.v = p; sfx('step'); say(V[p].desc() + (SUB[p] && !S.f['seen_' + p] ? ' 地板上还有一个舱口，通往' + V[SUB[p]].name + '。' : '')); if (SUB[p]) S.f['seen_' + p] = 1; },
+  go(p) { if ((p === 'core' && !(S.f.seal_t || S.f.power)) || (p === 'obs' && !S.f.power)) return say('那个舱段还黑着灯。'); if (locked(p)) { sfx('click'); return talk([Z('这个先放一放，还没到它。现在该去' + goalPlace() + '。'), Z('不知道做什么，就点「提示」。')]); } sim = null; S.v = p; sfx('step'); say(V[p].desc() + (SUB[p] && !S.f['seen_' + p] ? ' 地板上还有一个舱口，通往' + V[SUB[p]].name + '。' : '')); if (SUB[p]) S.f['seen_' + p] = 1; },
   look(p) { say(p); },
   star(i) { if (!S.stars.includes(+i)) { S.stars.push(+i); sfx('pick'); say('你捡到了一粒星屑。（' + S.stars.length + ' / 3）它在手心里是温的。'); } },
   vend() { say('投币口上贴着一张纸条：「故障」。字迹很工整，像是清洁臂写的。里面的货还亮着灯。'); },
@@ -1121,8 +1276,8 @@ const A = {
   chan(p) { stopMorse(); S.chan = p === '-' ? null : +p; sfx('click'); say(S.chan == null ? '收音机安静了。' : CHL[S.chan][1] + '频道：一串有节奏的滴答声，循环往复。小灯跟着一明一灭。'); },
   fuseSlot() {
     if (S.f.fuseIn) return say('保险丝已经装好。');
-    if (S.sel === 'fuse') { drop('fuse'); S.f.fuseIn = 1; sfx('pick'); return say('保险丝装上了。上一根就是这么熔断的——合总闸之前，先想想哪几路该合上。'); }
-    say('插槽空着，缺一根保险丝。');
+    if (S.sel === 'fuse') { drop('fuse'); S.f.fuseIn = 1; sfx('pick'); return say('备用保险丝装上了。上一根就是被超载烧断的——合总闸之前，先想想哪几路该合上。'); }
+    say('插槽空着。烧断的旧保险丝被人拔走了，备件柜里那根备用的也不见了。');
   },
   brk(i) { S.brk[i] = S.brk[i] ? 0 : 1; sfx('click'); const sum = S.brk.reduce((a, v, k) => a + (v ? BRK[k][1] : 0), 0); say('铭牌合计：' + sum + ' 格。保险丝最多 ' + FUSE_MAX + ' 格。'); },
   mains() {
@@ -1153,23 +1308,122 @@ const A = {
   gate() {
     if (S.f.gate) { S.v = 'back'; return say(V.back.desc()); }
     const need = ['seal_t', 'seal_s', 'seal_l'];
-    if (need.every(has) && has('pass')) { need.concat('pass').forEach(drop); S.f.gate = 1; sfx('win'); return talk(['三枚印章依次按进了门上的凹槽。时、声、光。最后是那枚「通行」。', Z('验印无误。后舱的门开了。'), Z('里面的东西是给你的，{name}。我只是替人保管。')]); }
+    if (need.every(has) && has('pass')) { need.concat('pass').forEach(drop); S.f.gate = 1; sfx('stamp'); return talk(['三枚印章依次按进了门上的凹槽。时、声、光。最后是那枚「通行」。', Z('验印无误。后舱的门开了。'), Z('里面的东西是给你的，{name}。我只是替人保管。')]); }
     if (need.every(has)) return talk([Z('三枚印章都对。可是这扇门还要一枚「通行」章。'), Z({ z: '帮我查完日志，我就能给你刻一枚。入口在主机底座上。', c: '……我没有权限直接给你。也许站里有谁捡到过一枚。', l: '通行章收在档案室。那里不对当户开放，除非你自己打得开门。' }[S.route] || '再等一等。')]);
     const n = need.filter(has).length;
     say('舱门上有三个方形凹槽，旁边还有一个圆的。' + (n ? '你手里有 ' + n + ' 枚印章，还不够。' : '你手里一枚印章也没有。'));
   },
   cake() {
     if (S.f.end) return showEnd(false);
-    if (S.stars.length && !S.f.lit) {
+    if (S.stars.length && !S.f.lit) {   // 第一次点：教你拖；再点一次：零替你放，绝不卡住
       S.f.cakeTry = (S.f.cakeTry || 0) + 1;
-      if (S.f.cakeTry === 1) return talk(['蛋糕上只插着一根蜡烛，还没有点。', Z('站里没有火。……不过，你一路捡的星屑还在发光。'), S.f.cat && S.route !== 'z' ? C('就是你头顶上那一串 ✦。把它们拿下来，放到蛋糕上。') : Z('就是你头顶上那一串 ✦。把它们拿下来，放到蛋糕上。')]);
-      if (!S.assist && S.f.cakeTry < 3) return say('零：「这一题要动的是网页本身。按住屏幕上方的 ✦，拖到蛋糕上再松手。」');
-      S.f.lit = 1; say('零：「那我替你放上去。」');
+      if (S.f.cakeTry === 1) return talk(['蛋糕上只插着一根蜡烛，还没有点。', Z('站里没有火。……不过，你一路捡的星屑还在发光。'), (S.route === 'c' ? C : Z)('就是你头顶右上角那一串 ✦。按住它，拖到蛋糕上再松手。')]);
+      S.f.lit = 1; say('零：「拖不动也没关系，我替你放上去。」');
     }
     const n = S.stars.length;
-    talk([n ? '你把捡到的星屑放在蛋糕上。它们立了起来，变成了蜡烛。' : '蛋糕上只有一根蜡烛。', '桌上除了蛋糕，还有一只空盘子，一把叉子。', Z('我没有手，点不了火。'), '话音刚落，烛芯自己亮了。'].concat(FINAL[S.route] || []).concat([{ fn: () => { S.f.end = 1; if (!S.end) S.end = 'l1'; sfx('win'); save(); setTimeout(() => runSlides(() => runCG(() => showEnd(false))), 500); } }]));
+    talk([n ? '你把捡到的星屑放在蛋糕上。它们立了起来，变成了蜡烛。' : '蛋糕上只有一根蜡烛。', '桌上除了蛋糕，还有一只空盘子，一把叉子。', Z('我没有手，点不了火。'), '话音刚落，烛芯自己亮了。'].concat(FINAL[S.route] || []).concat([{ fn: () => { S.f.end = 1; if (!S.end) S.end = 'l1'; sfx('stamp'); save(); setTimeout(() => runSlides(() => runCG(() => showEnd(false))), 500); } }]));
   }
 };
+
+Object.assign(A, {
+
+  ventgo() { S.f.ventIn = 1; ventNew(); talk([C('这是我的窝。想看？'), C('先找到我。'), '螺丝一扭身，钻进了墙上的通风口。', '管子里传来一声很轻的「咚」。', { fn: () => { S.v = 'vent'; say(V.vent.desc()); refresh(); save(); } }]); },
+  vcard(i) { S.vt.card = +i; sfx('click'); },
+  vwait() { const v = S.vt; if (v.card < 0 || v.waited) return; v.waited = 1; v.step = ventCands(v.seq)[v.real].next === v.card ? 1 : 0; sfx('step'); say('一分钟过去了。' + (v.step ? '纸板上多了一个小小的爪印。' : '纸板干干净净。') + '现在掀开一个通风口。只能掀一次。'); },
+  vopen(i) {
+    i = +i; const v = S.vt; if (!v.waited) return; const cs = ventCands(v.seq), real = cs[v.real], fit = [...new Set(cs.filter(c => (c.next === v.card) === !!v.step).map(c => c.next))];
+    if (fit.length > 1) { badN++; sfx('bad'); ventNew(); return talk(['你掀开' + VNAME[i] + '的通风口。' + (i === real.next ? '螺丝真的在里面。' : '里面是空的。'), C(i === real.next ? '……蒙的吧。' : '不在这儿。'), C('你看到的，' + fit.map(k => VNAME[k]).join('和') + '都说得通。蒙对了不算。'), C('再来一局。我换个地方跑。')]); }
+    if (i !== real.next) { badN++; sfx('bad'); ventNew(); return talk(['你掀开' + VNAME[i] + '的通风口。里面是空的。', '管子另一头，传来一声得意的「喵」。', C('再来一局。我换个地方跑。')]); }
+    S.v = 'cargo'; sfx('win');
+    getPass(['你掀开' + VNAME[i] + '的通风口。螺丝蹲在里面，尾巴尖的灯一闪一闪。', C('……被你找到了。'), C('大眼睛的摄像头找了我好久。你只用了一张纸板。'), C('行。跟我来。'), '它带你回到货舱，用脑袋拱开了最大那只箱子上的毛毯。', '箱子里是一个用旧毛毯垫成的窝，堆满了别人落在站里的小东西：一只手套，半块橡皮，一枚纽扣。毛毯边上有一行粉笔字，写得方方正正：好好休息。', C('那是清洁臂写的。它每晚来擦地，顺手替我把灯关上。'), C('零的规程说，没登记的要回收。我没登记。'), C('这些都没人来领。我替它们找了个地方。'), C('这个给你，门上要用。我捡的。'), '螺丝用鼻子把一枚刻着「通行」的章推到你脚边。']);
+  },
+  nbink(k) { S.nbInk = k; sfx('click'); },
+  nbput(ch) { const g = NB[nbSt()]; if (S.nb.length >= g.n) return say('这一行只有 ' + g.n + ' 格，已经写满了。点印好的字可以撤掉。'); S.nb.push([ch, S.nbInk]); sfx('click'); A.nbchk(); },
+  nbdel(i) { S.nb.splice(i, 1); sfx('click'); say(V.board.desc()); },
+  nbclr() { S.nb = []; say(V.board.desc()); },
+  nbchk() {
+    const st = nbSt(), g = NB[st], z = nbZ(), c = nbC();
+    if (z !== g.z || c !== g.c) { if (S.nb.length >= g.n) { badN++; say('格子满了。零读到的是「' + (z || '……') + '」，螺丝读到的是「' + (c || '……') + '」。'); } return; }
+    sfx('win');
+    if (st === 1) { S.f.nt1 = 1; S.nb = []; S.nbInk = 'k'; save(); return talk(['三个字挤在一行里。', '隔着红镜片，零读到的是：「早安」。隔着蓝镜片，螺丝读到的是：「晚安」。', Z('……早安。{name}，我好久没在告示栏上看到问候了。'), C('晚安。'), C('它看不见我那句吧？'), '看不见。在红镜片底下，红字就是一张白纸。', C('嗯。……那我去睡了。'), { fn: () => { S.v = 'dock'; say(V.dock.desc()); refresh(); save(); } }]); }
+    S.f.nt2 = 1; S.nbInk = 'k'; save();
+    talk(['十个字挤在一行里。', '隔着蓝镜片，螺丝读到的是：「别躲了，出来登记」。', C('……登记。登记了，就会被回收。我才不。'), '它跳下告示栏，钻回了通风管。', '隔着红镜片，零读到的是：「别找了，我不出来」。', Z('……它是不是误会了什么。'), { fn: () => { S.v = 'map'; say(V.map.desc()); refresh(); save(); } }]);
+  },
+  nightgo() { S.v = 'night'; S.no = []; sfx('click'); say(V.night.desc()); refresh(); save(); },
+  nopick(i) { const j = S.no.indexOf(i); if (j >= 0) S.no.splice(j, 1); else if (S.no.length < 4) S.no.push(i); sfx('click'); },
+  noclr() { S.no = []; },
+  nochk() {
+    const o = S.no.map(i => NIGHT[i].k), pos = k => o.indexOf(k), nm = k => '「' + NIGHT.find(x => x.k === k).n + '」';
+    if (o.join() === NIGHT_OK.join()) {
+      S.f.night = 1; sfx('win'); save();
+      return talk([Z('……对。是这个顺序。'), Z('点名，清洁臂没有应。读数往上爬，保险丝烧断，站里黑了。黑了以后，有轮子经过备件柜。最后，当铺里一枚硬币响了一声。'), Z('那根备用保险丝，后来就是在一枚假币里找到的。'), Z('……我不想往下猜了。'), { fn: () => { S.v = 'map'; say(V.map.desc()); refresh(); save(); } }]);
+    }
+    badN++;
+    const m = pos('coin') !== 3 ? '「最后一个声音」是硬币那一声。可你把' + nm(o[3]) + '排在了它后面。这两段对不上。'
+      : pos('fuse') < pos('roll') ? '点名的时候灯还亮着，可保险丝一烧断就黑了。' + nm('roll') + '和' + nm('fuse') + '，顺序反了。'
+      : nm('cab') + '那段开头就是「黑了以后」，得在保险丝烧断之后。它和' + nm('fuse') + '，顺序反了。';
+    sfx('bad'); talk([Z(m)]);
+  },
+  hdopen() { hdShow(); },
+});
+
+/* ================= 把 ✦ 拖到蛋糕上：自己实现拖动，不依赖浏览器的拖放 ================= */
+let dragStar = null;
+const canDrag = () => S.v === 'back' && S.stars.length > 0 && !S.f.lit && !S.f.end && !dOn && $('title').hidden;
+function moveStar(e) { if (dragStar) { dragStar.style.left = e.clientX + 'px'; dragStar.style.top = e.clientY + 'px'; } }
+function dropStar(e) {
+  if (!dragStar) return; dragStar.remove(); dragStar = null; document.body.classList.remove('dragging'); if (!e || !canDrag()) return;
+  const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * W / b.width, y = (e.clientY - b.top) * H / b.height;
+  if (x < 118 || x > 202 || y < 60 || y > 126) { say('星屑在半空停了一下，又飘回了你头顶。再往蛋糕上放一点。'); return; }
+  puff(x, y); S.f.lit = 1; sfx('pick'); act('cake');
+}
+$('stars').addEventListener('pointerdown', e => { if (!canDrag()) return; e.preventDefault(); dragStar = document.createElement('div'); dragStar.id = 'dragStar'; dragStar.textContent = '✦'.repeat(S.stars.length); document.body.appendChild(dragStar); document.body.classList.add('dragging'); moveStar(e); });
+window.addEventListener('pointermove', moveStar);
+window.addEventListener('pointerup', dropStar);
+window.addEventListener('pointercancel', () => dropStar(null));
+window.addEventListener('blur', () => dropStar(null));
+
+/* ================= 汉兜字锁（H，后舱的小彩蛋）：任意四个字，看字、声母、韵母、声调 ================= */
+let PYM = null;
+function pyMap() { if (PYM) return PYM; PYM = {}; String(window.PINYIN || '').split(';').forEach(g => { const [p, cs] = g.split(':'); if (cs) for (const c of cs) (PYM[c] = PYM[c] || []).push(p); }); return PYM; }
+const TONEMK = { '̄': 1, '́': 2, '̌': 3, '̀': 4 }, TONESYM = ['', 'ˉ', 'ˊ', 'ˇ', 'ˋ', '·'];
+const INITS = ['zh', 'ch', 'sh', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'r', 'z', 'c', 's', 'y', 'w'];
+function pyParse(p) {
+  let tone = 5, base = ''; for (const ch of p.normalize('NFD')) { if (TONEMK[ch]) tone = TONEMK[ch]; else base += ch; } base = base.normalize('NFC');
+  let ini = INITS.find(i => base.startsWith(i) && base.length > i.length) || ''; if (!/[aeiouü]/.test(base.slice(ini.length))) ini = '';
+  return { ini, fin: base.slice(ini.length), tone };
+}
+const HD_ANS = [['来', 'lái'], ['日', 'rì'], ['方', 'fāng'], ['长', 'cháng']].map(([c, p]) => Object.assign({ c }, pyParse(p))), HD_MAX = 10;
+function hdMark(vals, ans) { const res = vals.map(() => 'n'), left = {}; ans.forEach((a, i) => { if (vals[i] === a) res[i] = 'g'; else left[a] = (left[a] || 0) + 1; }); vals.forEach((v, i) => { if (res[i] !== 'g' && left[v]) { res[i] = 'y'; left[v]--; } }); return res; }
+function hdJudge(chars) {   // 多音字取对玩家最有利的读音
+  const M = pyMap(), opts = chars.map(c => M[c].map(pyParse)); let best = null;
+  const keys = ['ini', 'fin', 'tone'], walk = (i, pick) => { if (i === 4) { const mk = { c: hdMark(chars, HD_ANS.map(a => a.c)) }; keys.forEach(k => { mk[k] = hdMark(pick.map(p => p[k]), HD_ANS.map(a => a[k])); }); const sc = keys.concat('c').reduce((t, k) => t + mk[k].reduce((u, v) => u + (v === 'g' ? 2 : v === 'y' ? 1 : 0), 0), 0); if (!best || sc > best.sc) best = { sc, pick: pick.slice(), mk }; return; } opts[i].forEach(o => { pick.push(o); walk(i + 1, pick); pick.pop(); }); };
+  walk(0, []); return best;
+}
+function hdRender() {
+  const H0 = S.hd, rows = H0.g.map(g => { const chars = [...g], j = hdJudge(chars);
+    return '<div class="hdrow">' + chars.map((c, i) => { const p = j.pick[i]; return `<div class="hdc"><div class="hdpy"><span class="${j.mk.ini[i]}">${p.ini}</span><span class="${j.mk.fin[i]}">${p.fin}</span><span class="t ${j.mk.tone[i]}">${TONESYM[p.tone]}</span></div><div class="hdch ${j.mk.c[i]}">${c}</div></div>`; }).join('') + '</div>'; });
+  if (!H0.done) rows.push('<div class="hdrow empty">' + '<div class="hdc"><div class="hdpy">&nbsp;</div><div class="hdch">？</div></div>'.repeat(4) + '</div>');
+  $('hdGrid').innerHTML = rows.join('');
+  $('hdLeft').textContent = H0.done ? '' : '还能猜 ' + (HD_MAX - H0.g.length) + ' 次';
+  $('hdin').disabled = $('hdGo').disabled = !!H0.done; $('hdHint').hidden = !!H0.done;
+}
+function hdShow() { if (!S.hd) S.hd = { g: [], h: 0, done: 0 }; $('hdmsg').textContent = S.hd.done === 1 ? '你猜出来了：来日方长。' : S.hd.done === 2 ? '答案是：来日方长。' : ''; hdRender(); $('hd').hidden = false; if (!S.hd.done) $('hdin').focus(); sfx('click'); save(); }
+function hdGuess() {
+  const H0 = S.hd; if (!H0 || H0.done) return;
+  const chars = [...$('hdin').value].filter(c => /\p{Script=Han}/u.test(c));
+  if (chars.length !== 4) { $('hdmsg').textContent = '要正好四个汉字。'; return; }
+  const bad = chars.find(c => !pyMap()[c]); if (bad) { $('hdmsg').textContent = '「' + bad + '」这个字盒子不认得，换一个常用字吧。'; return; }
+  H0.g.push(chars.join('')); $('hdin').value = '';
+  if (chars.join('') === HD_ANS.map(a => a.c).join('')) { H0.done = 1; sfx('win'); $('hdmsg').textContent = '咔哒。盒盖弹开了。'; }
+  else if (H0.g.length >= HD_MAX) { H0.done = 2; $('hdmsg').textContent = '十次用完了。盒子自己弹开了：答案是「来日方长」。'; }
+  else { sfx('click'); $('hdmsg').textContent = ''; }
+  hdRender(); save(); refresh();
+}
+const HD_HINT = ['第一个字读 lái。', '这是零常说的一句话，意思是：以后的日子还长着呢。', '答案是「来日方长」。'];
+$('hdGo').onclick = hdGuess; $('hdin').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) hdGuess(); });
+$('hdHint').onclick = () => { const H0 = S.hd; if (!H0) return; $('hdmsg').textContent = '提示：' + HD_HINT.slice(0, H0.h + 1).join(' '); H0.h = Math.min(H0.h + 1, HD_HINT.length - 1); save(); };
+$('hdClose').onclick = () => { $('hd').hidden = true; if (S.hd && S.hd.done && !S.f.hdTalk) { S.f.hdTalk = 1; save(); talk(S.hd.done === 1 ? ['盒子里只有一张小纸条，是零的字：', Z('「来日方长」。这四个字，我在当票上写过，也刻在过别的地方。'), Z('这一次，是你自己拼出来的。')] : ['盒子里只有一张小纸条，是零的字：「来日方长」。', Z('猜不出来也没关系。这四个字的意思就是：不着急。')]); } refresh(); };
 
 /* ================= 第二场景、支线、笔记本、宝箱 ================= */
 function txt(s, x, y, size, c, align = 'left', bold = true) { size = Math.max(size, 7); ctx.fillStyle = typeof c === 'string' ? c : PAL[c]; ctx.font = (bold ? 'bold ' : '') + size + 'px "PingFang SC","Microsoft YaHei","Noto Sans SC",monospace'; ctx.textAlign = align; ctx.textBaseline = 'top'; ctx.fillText(s, x, y); }
@@ -1220,20 +1474,23 @@ function sideWin(k, tier, msg, crewLine, metric) {
 }
 const bestTxt = k => S.best[k] ? '　目前评语：' + RATE[S.best[k].tier] : '';
 
-/* ① 邮件室 · 导航副机：给信使写一段循环程序 */
-const DMAPS = [['#S#....', '......#', '.......', '....##.', '..#..G.'], ['S.....#', '..#....', '..#.##G', '.....#.', '#......'], ['.#..#..', '.....#.', '.#...G.', '.S.....', '..#....']];
-const DCMD = { F: '前进', L: '左转', R: '右转', A: '撞则左转', B: '撞则右转' }, DMAX = 8, DSTEPS = 64;
+/* ① 邮件室 · 导航副机：用 Python 给信使写一段循环程序（右手扶墙） */
+const DMAPS = [['..#....', '..#....', 'S......', '..#....', '.#...G.'], ['......G', '.......', 'S..#.##', '....#..', '.....#.'], ['....#..', '.......', 'S.###..', '..#....', '....G..']];
+const DCMD = { F: '前进()', L: '左转()', R: '右转()', A: 'if 前面有陨石(): 左转()', B: 'if 前面有陨石(): 右转()', C: 'if 右边是空的(): 右转()' }, DMAX = 4, DSTEPS = 64;
+const DZH = { F: '前进', L: '左转', R: '右转', A: '如果前面有陨石，就左转', B: '如果前面有陨石，就右转', C: '如果右边是空的，就右转' };
+const dLabel = c => S.f.py ? DCMD[c] : DZH[c];
 const dFind = (m, ch) => { for (let j = 0; j < 5; j++) { const i = m[j].indexOf(ch); if (i >= 0) return [i, j]; } };
 const dBlocked = (m, x, y) => x < 0 || x >= 7 || y < 0 || y >= 5 || m[y][x] === '#';
 function dStep(m, st, c) {
-  const nx = st.x + DX4[st.d], ny = st.y + DY4[st.d], b = dBlocked(m, nx, ny);
-  if (c === 'L') st.d = (st.d + 3) % 4; else if (c === 'R') st.d = (st.d + 1) % 4; else if (c === 'A') { if (b) st.d = (st.d + 3) % 4; } else if (c === 'B') { if (b) st.d = (st.d + 1) % 4; } else if (!b) { st.x = nx; st.y = ny; }
+  const nx = st.x + DX4[st.d], ny = st.y + DY4[st.d], b = dBlocked(m, nx, ny), rd = (st.d + 1) % 4, rb = dBlocked(m, st.x + DX4[rd], st.y + DY4[rd]);
+  if (c === 'L') st.d = (st.d + 3) % 4; else if (c === 'R') st.d = rd; else if (c === 'A') { if (b) st.d = (st.d + 3) % 4; } else if (c === 'B') { if (b) st.d = rd; } else if (c === 'C') { if (!rb) st.d = rd; } else if (!b) { st.x = nx; st.y = ny; }
   const g = dFind(m, 'G'); if (st.x === g[0] && st.y === g[1]) st.done = true;
 }
 const dStart = () => DMAPS.map(m => { const s = dFind(m, 'S'); return { x: s[0], y: s[1], d: 0, done: false }; });
-reg('mail', { name: '邮件室', parent: 'dock', desc: () => '导航副机的委托：「三封信，三张航图，可信使无人机只装得下一段程序。」用下面的按钮给它写最多 8 条指令。程序会从头到尾一遍遍循环，三张航图上同时试飞。' + bestTxt('mail'),
+const PYCARD = [{ who: '导航副机', t: '同样的程序，用 Python 写是这样的。一共只要懂三样：' }, { who: '导航副机', t: '「前进()」是调用一个动作，后面的括号表示「去做」。' }, { who: '导航副机', t: '「while not 送到():」下面缩进的几行，会一遍一遍重复，直到信送到为止。' }, { who: '导航副机', t: '「if 条件: 动作」只在条件成立的时候才做那个动作，不成立就跳过这一行。' }, { who: '导航副机', t: '循环里最多写四行。三张航图，用同一段程序。' }];
+reg('mail', { name: '邮件室', parent: 'dock', desc: () => '导航副机的委托：「三封信，三张航图，可信使无人机只装得下一段程序。」用下面的按钮写程序，循环里最多 4 行，同一段程序要在三张航图上都送到。无人机出发时都朝右。' + (S.f.py ? '现在是 Python 写法。' : '无人机也认 Python，想试的话可以切换写法。') + bestTxt('mail'),
   draw() {
-    r(0, 0, W, H, 1); r(0, 0, W, 12, 2); txt('信使无人机 · 航线程序', 312, 2, 8, 5, 'right');
+    r(0, 0, W, H, 1); r(0, 0, W, 12, 2); txt('信使无人机 · 航线程序' + (S.f.py ? '（Python）' : ''), 312, 2, 8, 5, 'right');
     const sts = sim && sim.kind === 'drone' ? sim.st : dStart();
     DMAPS.forEach((m, k) => {
       const x0 = 10 + k * 103, y0 = 26, c = 13; txt('航图' + CNUM[k], x0 + (k ? 0 : 50), 15, 7, 4); r(x0 - 1, y0 - 1, 7 * c + 2, 5 * c + 2, sts[k].done ? 12 : 3); r(x0, y0, 7 * c, 5 * c, 0);
@@ -1246,40 +1503,57 @@ reg('mail', { name: '邮件室', parent: 'dock', desc: () => '导航副机的委
       const s = sts[k], cx = x0 + s.x * c + 6, cy = y0 + s.y * c + 6; r(cx - 3, cy - 3, 7, 7, 5); r(cx - 2, cy - 2, 5, 5, 4); r(cx + DX4[s.d] * 4 - 1, cy + DY4[s.d] * 4 - 1, 3, 3, 6);
       if (s.done) txt('送到', x0 + 7 * c - 2, 15, 7, 12, 'right');
     });
-    txt('程序（循环执行）', 10, 97, 7, 4); txt(S.pg.length + ' / ' + DMAX + ' 条', 310, 97, 7, 7, 'right');
-    for (let i = 0; i < DMAX; i++) { const x = 10 + i * 38, on = sim && sim.kind === 'drone' && S.pg.length && (sim.i % S.pg.length) === i; r(x, 107, 35, 16, on ? 7 : 3); r(x + 1, 108, 33, 14, i < S.pg.length ? 2 : 0); txt(String(i + 1), x + 17, 124, 7, on ? 7 : 3, 'center'); if (i < S.pg.length) txt(DCMD[S.pg[i]], x + 18, 111, 7, on ? 7 : 6, 'center'); }
-    txt('撞则左转：前面有陨石或航图边界时才转，否则这一步什么也不做。', 10, 138, 7, 4, 'left', false);
-    txt('前进时前面被挡住，就原地不动。无人机出发时都朝右。', 10, 148, 7, 4, 'left', false);
-    if (sim && sim.kind === 'drone') txt('第 ' + sim.i + ' / ' + DSTEPS + ' 步', 310, 160, 7, 7, 'right');
+    r(10, 97, 300, 76, '#0b0f1a'); r(10, 97, 300, 1, '#2a3550');
+    if (S.f.py) { txt('while', 16, 101, 8, '#c792ea'); txt('not', 46, 101, 8, '#c792ea'); txt('送到():', 68, 101, 8, '#82aaff'); } else txt('一遍又一遍，直到送到：', 16, 101, 8, '#82aaff');
+    for (let i = 0; i < DMAX; i++) {
+      const y = 116 + i * 14, c = S.pg[i], on = sim && sim.kind === 'drone' && S.pg.length && (sim.i % S.pg.length) === i;
+      if (on) r(12, y - 2, 296, 13, '#1e2a44');
+      txt(String(i + 1), 18, y, 7, '#3a4870');
+      if (!c) { txt('……', 40, y, 8, '#3a4870', 'left', false); continue; }
+      const t = dLabel(c), m = S.f.py && t.match(/^if (.+?): (.+)$/);
+      if (m) { txt('if', 40, y, 8, '#c792ea'); txt(m[1] + ':', 54, y, 8, '#ffcb6b'); txt(m[2], 54 + ctx.measureText(m[1] + ':').width + 6, y, 8, '#82aaff'); }
+      else txt(t, 40, y, 8, '#82aaff');
+    }
+    txt(S.pg.length + ' / ' + DMAX + ' 行', 304, 101, 7, 7, 'right');
+    if (sim && sim.kind === 'drone') txt('第 ' + sim.i + ' 步', 304, 160, 7, 7, 'right');
   },
-  btns: () => sim ? [] : [['前进', 'dc', 'F'], ['左转', 'dc', 'L'], ['右转', 'dc', 'R'], ['撞则左转', 'dc', 'A'], ['撞则右转', 'dc', 'B'], ['删一条', 'dc', '-'], ['清空', 'dc', '0'], ['试飞', 'dfly']],
-  hint: () => ['每张图单独都不难，难的是同一段程序。先找三张图的共同点：信箱都在出发点的右下方。', '「前进、撞了就转」这种贴着障碍走的写法最通用。试试把「撞则右转」和「前进」交替着用，再加一个「左转」。'],
-  sol: () => '<p>一种 5 条指令的写法（最短就是 5 条，一共有 8 种）：</p><ol><li>前进</li><li>撞则右转</li><li>前进</li><li>左转</li><li>撞则右转</li></ol><p>思路：无人机一边往前，一边在撞到东西时向右拐，中间插一个左转把方向掰回来，结果是沿着障碍物的边一路向右下方走。6 条指令的写法有 22 种，不必和这个一样。</p>',
-  skip() { S.pg = ['F', 'B', 'F', 'L', 'B']; sideWin('mail', 0, '零把一段程序传给了无人机。三封信都送到了。', NAVLINE); } });
-const NAVLINE = { who: '导航副机', t: '收到。三封信都投进去了。我算了很多年航线，头一回有人替我写程序。' };
+  btns: () => sim ? [] : ['F', 'L', 'R', 'A', 'B', 'C'].map(c => [dLabel(c), 'dc', c]).concat([['删一行', 'dc', '-'], ['清空', 'dc', '0'], [S.f.py ? '换回中文写法' : '换成 Python 写法', 'pyswap']], S.f.py ? [['语法', 'pyhelp']] : [], [['试飞', 'dfly']]),
+  hint: () => ['「撞了就转」最容易想到，可总有一张图会把无人机困在原地兜圈。想想人在黑屋子里怎么走出迷宫。', '右手一直扶着墙走：右边空着就先右转，前面有陨石就左转，然后前进。'],
+  sol: () => '<p>最少 3 行，一共 7 种写法。其中一种（中文写法）：</p><pre>一遍又一遍，直到送到：\n    如果右边是空的，就右转\n    如果前面有陨石，就左转\n    前进</pre><p>同一段程序的 Python 写法：</p><pre>while not 送到():\n    if 右边是空的(): 右转()\n    if 前面有陨石(): 左转()\n    前进()</pre><p>思路是走迷宫的「右手法则」：右手一直扶着墙走，总能走到出口。「撞了就右转」在航图三上会被一排陨石困住。</p>',
+  skip() { S.pg = ['C', 'A', 'F']; sideWin('mail', 0, '零把一段程序传给了无人机。三封信都送到了。', NAVLINE); } });
+const NAVLINE = { who: '导航副机', t: '收到。三封信都投进去了。右手扶墙……我算了很多年航线，头一回有人替我写程序。' };
 
-/* ② 库房 · 零：互相打架的上架规程 */
-const IT6 = [{ n: '玻璃罐', f: 1, h: 0, o: '甲', old: 1 }, { n: '铁砧', f: 0, h: 1, o: '甲', old: 0 }, { n: '八音盒', f: 1, h: 0, o: '乙', old: 1 }, { n: '石像', f: 0, h: 1, o: '乙', old: 1 }, { n: '信封', f: 0, h: 0, o: '丙', old: 0 }, { n: '灯泡', f: 1, h: 0, o: '丙', old: 0 }];
-const RTXT = ['易碎的不放下层', '重的只放下层', '同一位当户的放同一层', '旧当物不放下层', '两件易碎的不放同一层', '上层只放轻的', '新当物不放上层', '同一层不放同一位当户的'];
-const pairs = f => IT6.every((a, i) => IT6.every((b, j) => i === j || f(a, b, i, j)));
-const RFN = [a => IT6.every((t, i) => !t.f || a[i] !== 2), a => IT6.every((t, i) => !t.h || a[i] === 2), a => pairs((x, y, i, j) => x.o !== y.o || a[i] === a[j]), a => IT6.every((t, i) => !t.old || a[i] !== 2),
-  a => pairs((x, y, i, j) => !(x.f && y.f) || a[i] !== a[j]), a => IT6.every((t, i) => a[i] !== 0 || !t.h), a => IT6.every((t, i) => t.old || a[i] !== 0), a => pairs((x, y, i, j) => x.o !== y.o || a[i] !== a[j])];
-function shelve(keep) { let out = null; (function rec(a, c) { if (out) return; if (a.length === 6) { if (keep.every((k, i) => !k || RFN[i](a))) out = a.slice(); return; } for (let t = 0; t < 3; t++) if (c[t] < 2) { c[t]++; a.push(t); rec(a, c); a.pop(); c[t]--; } })([], [0, 0, 0]); return out; }
-reg('rules', { name: '规程簿', parent: 'store', desc: () => '零的委托：「六件当物，三层架子，每层两件。我的八条规程互相打架，怎么摆都违规。」点右边的规程可以划掉或恢复，至少留四条，然后请零按留下的规程上架。' + bestTxt('store'),
+/* ② 库房 · 零：互相打架的上架规程（4 件、2 层、5 条） */
+const IT4 = [{ n: '玻璃罐', f: 1, h: 0, o: '甲' }, { n: '铁砧', f: 0, h: 1, o: '甲' }, { n: '八音盒', f: 1, h: 0, o: '乙' }, { n: '信封', f: 0, h: 0, o: '乙' }];
+const RTXT = ['易碎的放上层', '重的放下层', '同一当户的放同一层', '两件易碎的不放同一层', '上层只放轻的'];
+const RFN = [a => IT4.every((t, i) => !t.f || a[i] === 0), a => IT4.every((t, i) => !t.h || a[i] === 1), a => IT4.every((t, i) => IT4.every((u, j) => t.o !== u.o || a[i] === a[j])), a => a[0] !== a[2], a => IT4.every((t, i) => a[i] !== 0 || !t.h)];
+const ARR4 = [[0, 0, 1, 1], [0, 1, 0, 1], [0, 1, 1, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 1, 0, 0]];
+const rkOK = () => { if (!S.rk || S.rk.length !== RTXT.length) S.rk = RTXT.map(() => true); return S.rk; };
+const sat = ids => ARR4.find(a => ids.every(i => RFN[i](a)));
+function bestShelf() {   // 能摆：[摆法, []]；摆不下：[null, 卷进冲突的规程]（只标出谁和谁打架，不点明该删哪条）
+  const kept = rkOK().map((k, i) => k ? i : -1).filter(i => i >= 0), a = sat(kept); if (a) return [a, []];
+  const fight = new Set(), subs = [];
+  for (let m = 1; m < 1 << kept.length; m++) { const ids = kept.filter((_, q) => m >> q & 1); if (!sat(ids) && ids.every(i => sat(ids.filter(j => j !== i)))) subs.push(ids); }
+  subs.forEach(ids => ids.forEach(i => fight.add(i))); return [null, [...fight].sort(), subs];
+}
+reg('rules', { name: '规程簿', parent: 'store', desc: () => '零的委托：「四件当物，两层架子，每层放两件。我的五条规程互相打架。」点规程可以划掉或恢复。卷进冲突的规程会标红。' + bestTxt('store'),
   draw() {
-    r(0, 0, W, H, 13); r(6, 6, 146, 168, 6); r(6, 6, 146, 11, 14); txt('待上架的当物', 148, 7, 8, 0, 'right');
-    IT6.forEach((t, i) => { const y = 22 + i * 13; r(10, y + 1, 7, 7, { 甲: 9, 乙: 4, 丙: 11 }[t.o]); txt(t.n, 20, y, 8, 0); txt((t.f ? '易碎' : '结实') + ' · ' + (t.h ? '重' : '轻') + ' · ' + t.o + ' · ' + (t.old ? '旧' : '新'), 148, y + 1, 7, 13, 'right', false); });
-    r(10, 102, 138, 1, 14); txt('架子', 10, 106, 8, 0);
-    ['上层', '中层', '下层'].forEach((n, k) => { const y = 118 + k * 17; r(10, y, 138, 15, 14); r(11, y + 1, 136, 13, 13); txt(n, 14, y + 3, 7, 7); txt(S.arr ? IT6.filter((t, i) => S.arr[i] === k).map(t => t.n).join('　') : '（空）', 44, y + 3, 8, S.arr ? 6 : 14); });
+    rkOK(); const [a, bad, subs] = bestShelf();
+    r(0, 0, W, H, 13); r(6, 6, 146, 168, 6); r(6, 6, 146, 11, 14); txt('架子（零按留下的规程试摆）', 148, 7, 7, 0, 'right');
+    ['上层', '下层'].forEach((n, k) => { const y = 26 + k * 56; r(10, y + 44, 138, 4, WD[3]); r(10, y + 48, 138, 2, WD[1]); txt(n, 12, y, 7, 14);
+      if (a) IT4.forEach((t, i) => { if (a[i] !== k) return; const x = a.slice(0, i).filter(v => v === k).length ? 82 : 18; r(x, y + 10, 58, 34, 1); r(x + 1, y + 11, 56, 32, 2); txt(t.n, x + 29, y + 14, 8, 6, 'center');
+        const tags = [t.f ? ['易碎', 9] : null, t.h ? ['重', 14] : ['轻', 4], [t.o, { 甲: 7, 乙: 12 }[t.o]]].filter(Boolean); tags.forEach(([w, c], q) => { const tx = x + 4 + q * 18; r(tx, y + 30, 16, 10, c); txt(w, tx + 8, y + 31, 7, 0, 'center', false); }); }); });
+    if (!a) { txt('怎么摆都违规', 79, 60, 9, 9, 'center'); }
+    txt(a ? '全部满足，可以请零上架' : '标红的规程在互相打架', 79, 148, 8, a ? 12 : 9, 'center');
     r(158, 6, 156, 168, 1); r(158, 6, 156, 11, 2); txt('上架规程', 162, 7, 8, 5);
-    RTXT.forEach((t, i) => { const y = 21 + i * 17, on = S.rk[i]; r(162, y, 148, 15, on ? 3 : 0); r(163, y + 1, 146, 13, on ? 2 : 0); txt(CNUM[i], 167, y + 3, 8, on ? 7 : 2); txt(t, 180, y + 3, 8, on ? 6 : 3, 'left', on); if (!on) r(178, y + 7, 124, 1, 9); hot(162, y, 148, 16, 'rk', i, on ? '划掉' : '恢复'); });
-    txt('留下 ' + S.rk.filter(Boolean).length + ' 条（至少 4 条）', 310, 160, 7, 7, 'right');
+    RTXT.forEach((t, i) => { const y = 24 + i * 24, on = S.rk[i], no = on && bad.includes(i); r(162, y, 148, 20, no ? 9 : on ? 3 : 0); r(163, y + 1, 146, 18, on ? 2 : 0); txt(CNUM[i], 168, y + 5, 8, on ? 7 : 2); txt(t, 182, y + 5, 8, on ? 6 : 3, 'left', on); if (!on) r(180, y + 10, 124, 1, 9); if (no) txt('打架', 306, y + 6, 7, 9, 'right'); hot(162, y, 148, 21, 'rk', i, on ? '划掉' : '恢复'); });
+    txt('留下 ' + S.rk.filter(Boolean).length + ' 条（至少 3 条）', 310, 160, 7, 7, 'right');
   },
   btns: () => [['请零上架', 'rkgo'], ['全部恢复', 'rkall']],
-  hint: () => ['先找互相打架的：第一、二、三条不能同时成立（甲的玻璃罐不能放下层，甲的铁砧只能放下层，可它们得在同一层）。第三条和第八条更是正好相反。', '易碎的有三件，架子只有三层：留着第五条，就必有一件易碎的在下层，所以第一条和第五条也只能留一条。'],
-  sol: () => '<p>八条全留是摆不出来的。能留下的最多是 5 条，只有一种留法：</p><p><b>留第一、四、六、七、八条</b>（划掉二、三、五）。</p><p>只留 4 条的话有 10 种留法，比如：一、二、六、七；或者三、四、五、七。</p><p>为什么：第三条和第八条相反；第一、二、三条凑不齐；第一条和第五条凑不齐；第二条和第四条也凑不齐（石像又重又旧）。</p>',
-  skip() { S.rk = [1, 0, 0, 1, 0, 1, 1, 1].map(Boolean); A.rkgo(); } });
-const ZEROLINE = Z('被你划掉的那几条，我会从规程里删去。……原来规程是可以改的。');
+  hint: () => ['易碎的有两件。第一条要它们都去上层，第四条又不许它们在同一层。', '只删一条就够。删掉第一条「易碎的放上层」：铁砧和玻璃罐去下层，八音盒和信封去上层，其余四条全满足。'],
+  sol: () => '<p>只删一条，而且只能删<b>第一条「易碎的放上层」</b>。</p><p>摆法：上层八音盒、信封；下层玻璃罐、铁砧。</p><p>为什么：第一条和第四条直接打架（两件易碎的都去上层，又不能同层）；第一、二、三条也凑不齐（玻璃罐要上去，铁砧要下去，可它俩是同一位当户的）。两组冲突里都有第一条。</p>',
+  skip() { S.rk = [false, true, true, true, true]; A.rkgo(); } });
+const ZEROLINE = Z('被你划掉的那几条，我会从规程里删去。……原来规程是可以改的。'), ZEROLINE1 = Z('「易碎的放上层」听着最像在保护东西，原来最该删。……规程是可以改的。');
 
 /* ③ 苗圃 · 清洁臂：只会直着滑 */
 const NROWS = ['........', '........', '...f....', '...ff...', 'f.#.....', 'S....f..'], NW = 8, NH = 6, NMAX = 4;
@@ -1291,7 +1565,7 @@ function slidePath(blocks) {
 }
 reg('nursery', { name: '苗圃', parent: 'green', desc: () => '清洁臂的委托：「我想替它们浇水。可我只会直着滑，撞到东西才会向右转。」点空地可以放一只空花盆当挡板，最多 ' + NMAX + ' 只。摆好以后让清洁臂开动，它得经过每一盆干着的花。' + bestTxt('nursery'),
   draw() {
-    r(0, 0, W, H, 21); const x0 = 80, y0 = 8, c = 20; r(x0 - 3, y0 - 3, NW * c + 6, NH * c + 6, 13); r(x0, y0, NW * c, NH * c, 11);
+    r(0, 0, W, H, '#173226'); const x0 = 80, y0 = 8, c = 20; r(x0 - 3, y0 - 3, NW * c + 6, NH * c + 6, 13); r(x0, y0, NW * c, NH * c, 11);
     const run = sim && sim.kind === 'slide', done = new Set(), n = run ? sim.i : 0; if (run) for (let i = 0; i <= n && i < sim.path.length; i++) done.add(sim.path[i][0] + ',' + sim.path[i][1]);
     for (let j = 0; j < NH; j++) for (let i = 0; i < NW; i++) {
       const x = x0 + i * c, y = y0 + j * c, ch = NROWS[j][i], k = i + ',' + j; r(x, y, c, 1, 21); r(x, y, 1, c, 21);
@@ -1348,32 +1622,48 @@ reg('bunk', { name: '休息舱', parent: 'obs', desc: () => '螺丝的委托：�
   skip() { S.srt = SIT.map(it => it[0] + 1); A.sook(); } });
 const CATLINE = { who: '螺丝', t: '行。这下我的东西有地方放了。……草莓还你，我本来就是想放到你蛋糕上的。' };
 
-/* ⑤ 冷却井 · 温控器：倒来倒去，凑出 42 度 */
-const TCAP = [10, 6, 4], TINIT = [[5, 90], [6, 30], [4, 0]], TN = ['甲', '乙', '丙'];
-const tfmt = t => (Math.round(t * 100) / 100).toString();
-reg('shaft', { name: '冷却井', parent: 'core', desc: () => '温控器的委托：「冷却液要正好 42 度。我只会量，不会倒。」三只水箱的水可以互相倒：一直倒到对方满，或者自己空。两股水混在一起，温度按水量平均。让任意一只水箱恰好 42 度。' + bestTxt('shaft'),
+/* ⑤ 冷却井 · 温控器：先开面板锁（前任的五条记录），再找出管灯的开关（摸灯泡的温度） */
+const KLOG = [['053', 1, 0], ['645', 1, 0], ['938', 0, 0], ['735', 0, 0], ['410', 0, 2]], KANS = '042';
+const kfb = (g, s) => { let a = 0, c = 0; for (let i = 0; i < 3; i++) if (g[i] === s[i]) a++; for (const ch of new Set(g)) if (s.includes(ch)) c++; return [a, c - a]; };
+const kcode = () => S.kd.join('');
+function swObs(k) { return S.sw[k] ? '亮' : S.swh[k] ? '灭·热' : '灭·凉'; }
+reg('shaft', { name: '冷却井', parent: 'core',
+  desc: () => (!S.f.kOpen ? '温控器的委托：「控制面板锁上了。前任技工试过五次，结果记在旁边的纸上。」密码是三位数，三个数字互不相同。A 表示数字和位置都对的个数，B 表示数字对、位置不对的个数。'
+    : S.f.tIn ? '门开着。温控器：「看清楚了就告诉我，是哪一个开关。」'
+    : '面板开了。温控器：「里屋有一盏灯，门外三个开关，只有一个管它。门关着看不见灯，门也只能开一次。」你可以随意拨开关、等一会儿，再进门。') + bestTxt('shaft'),
   draw() {
     r(0, 0, W, H, 0); for (let i = 0; i < 5; i++) { r(6 + i * 7, 0, 2, H, 2); r(W - 8 - i * 7, 0, 2, H, 2); }
-    r(46, 6, 228, 168, 1); r(46, 6, 228, 2, 4); if (!S.f.quiet) { const on = tick % 8 < 4; r(150, 0, 20, 5, on ? '#ff3030' : '#501010'); if (on) soft(160, 4, 22, [255, 40, 40], .35); }
-    txt('目标：任意一箱 = 42°', 54, 12, 9, 7); txt('已倒 ' + S.tkn + ' 次', 266, 13, 8, 5, 'right');
-    S.tk.forEach(([v, t], i) => {
-      const x = 66 + i * 70, h = TCAP[i] * 10, y = 142 - h, fh = Math.round(v * 10), col = t < 25 ? 4 : t < 45 ? 23 : t < 65 ? 8 : 9, hit = v > 0 && Math.abs(t - 42) < 1e-6;
-      r(x - 2, y - 2, 52, h + 4, hit ? 7 : 3); r(x, y, 48, h, 0); if (v > 0) { r(x, 142 - fh, 48, fh, col); r(x, 142 - fh, 48, 2, 6); }
-      for (let k = 1; k < TCAP[i]; k++) r(x, 142 - k * 10, 4, 1, 3);
-      txt(TN[i], x + 24, y - 14, 9, 6, 'center'); txt(v > 0 ? tfmt(t) + '°' : '空', x + 24, 146, 10, hit ? 7 : 6, 'center'); txt(v + ' / ' + TCAP[i] + ' 升', x + 24, 159, 7, 4, 'center', false);
-    });
+    if (!S.f.kOpen) {
+      // 前任的记录纸
+      r(48, 14, 112, 152, PP[1]); r(46, 12, 112, 152, PP[0]); r(46, 12, 112, 3, RD[2]); txt('前任技工的记录', 102, 18, 8, '#3a2a20', 'center');
+      KLOG.forEach(([g, a, b], i) => { const y = 38 + i * 22; txt(g.split('').join(' '), 60, y, 10, '#3a2a20', 'left'); txt(a + 'A' + b + 'B', 150, y + 1, 9, '#3a2a20', 'right'); r(56, y + 16, 96, 1, PP[2]); });
+      txt('三个数字互不相同', 102, 150, 7, '#6a5a50', 'center', false);
+      // 面板锁
+      bevel(176, 24, 128, 120, MT, 2); r(182, 30, 116, 108, MT[1]); txt('控制面板', 240, 34, 8, MT[5], 'center');
+      S.kd.forEach((d, i) => { const x = 192 + i * 34; r(x, 58, 26, 34, '#07090f'); r(x, 58, 26, 1, MT[3]); txt(String(d), x + 13, 66, 14, YL[3], 'center'); hot(x, 44, 26, 13, 'kd', i + ',1', '加一'); hot(x, 93, 26, 13, 'kd', i + ',-1', '减一'); txt('▲', x + 13, 46, 8, MT[4], 'center', false); txt('▼', x + 13, 95, 8, MT[4], 'center', false); });
+      r(196, 116, 88, 4, S.kTry ? RD[2] : MT[2]);
+    } else {
+      // 门外：三个开关和一扇门
+      r(40, 20, 240, 140, MT[1]); r(40, 20, 240, 2, MT[3]);
+      [0, 1, 2].forEach(k => { const x = 70 + k * 40; bevel(x, 60, 26, 44, MT, 2); r(x + 9, 66, 8, 32, '#07090f'); const on = S.sw[k]; r(x + 10, on ? 68 : 82, 6, 14, on ? GR[3] : MT[4]); txt(String(k + 1), x + 13, 108, 9, MT[5], 'center'); if (!S.f.tIn) hot(x, 56, 26, 52, 'tsw', k, k + 1 + ' 号开关'); });
+      r(212, 44, 52, 96, WD[2]); r(216, 48, 44, 88, S.f.tIn ? '#1a1206' : WD[3]); r(252, 92, 4, 4, BR[3]);
+      if (S.f.tIn) { const lit = S.sw[S.tsw]; if (lit) soft(238, 74, 26, [255, 220, 120], .5); circ(238, 74, 7, lit ? YL[4] : '#3a3428'); r(235, 81, 6, 5, MT[3]); if (!lit && S.swh[S.tsw]) { for (let q = 0; q < 3; q++) r(233 + q * 5, 62 - (tick + q * 2) % 6, 1, 3, '#c89060'); } }
+      else hot(212, 44, 52, 96, 'tdoor', '', '里屋的门');
+      txt(S.f.tIn ? '灯' + (S.sw[S.tsw] ? '亮着' : S.swh[S.tsw] ? '灭着，灯泡还热' : '灭着，灯泡是凉的') : '已经等过 ' + (S.twait || 0) + ' 次', 160, 146, 8, 7, 'center');
+    }
   },
-  btns: () => [['甲→乙', 'pour', '01'], ['甲→丙', 'pour', '02'], ['乙→甲', 'pour', '10'], ['乙→丙', 'pour', '12'], ['丙→甲', 'pour', '20'], ['丙→乙', 'pour', '21'], ['重来', 'pourclr']],
-  hint: () => !S.f.quiet ? ['这一题要动的是网页本身：温控器的警报和网页的声音是连着的。', '点网页上的「声音：开」，把它关掉。关掉以后可以再打开，警报不会再响。'] : ['90 度太热，0 度太冷。先用丙箱的冷水把甲箱压下来：5 升 90 度加 4 升 0 度，是 9 升 50 度。', '甲箱 50 度以后，再想办法让它和 30 度的水按 2 比 1 混在一起：(48×4 + 30×2) ÷ 6 = 42。'],
-  sol: () => '<p>最少 4 次，一共有 9 种倒法。其中一种：</p><ol><li>丙→甲：甲变成 9 升 50°</li><li>乙→丙：丙变成 4 升 30°，乙剩 2 升 30°</li><li>丙→甲：甲变成 10 升 48°，丙剩 3 升</li><li>甲→乙：乙变成 6 升，(2×30 + 4×48) ÷ 6 = 42°</li></ol>',
-  skip() { S.tk = [[6, 48], [6, 42], [3, 30]]; S.tkn = 4; sideWin('shaft', 0, '零替你把水倒好了。乙箱正好 42 度。', TEMPLINE); } });
-const TEMPLINE = { who: '温控器', t: '四十二度整。我量了一辈子温度，这是头一次有人照着我说的数来。' };
+  btns: () => !S.f.kOpen ? [['试开', 'kgo']] : S.f.tDone && S.f.tIn ? [['重新接线，再来一次', 'treset']] : S.f.tIn ? [['是 1 号', 'tans', 0], ['是 2 号', 'tans', 1], ['是 3 号', 'tans', 2]] : [['等一会儿', 'twait'], ['进门', 'tdoor']],
+  hint: () => !S.f.kOpen ? ['先看两条「0A0B」，它们一下排掉五个数字。剩下的每条记录里，还有几个数字没被排掉？', '053 只剩 0，它在第一位；645 只剩 6 和 4，第一位已经是 0，所以 4 在第二位；410 的两个 B 就是 4 和 0，所以 1 不在。第三位只剩 2：042。']
+    : ['灯不只会亮。', '开 1 号，等一会儿，关掉 1 号，再开 2 号，然后进门。亮是 2 号；灭但灯泡热，是 1 号；灭而且凉，是 3 号。'],
+  sol: () => '<p><b>面板锁：042。</b>938、735 都是 0A0B，排掉 3、5、7、8、9。053 里只剩 0，又是 1A，所以第一位是 0。645 里只剩 6 和 4，第一位已经是 0，6 不可能在第一位，所以 4 在第二位。410 是 0A2B，两个对的就是 4 和 0，1 不在。第三位只剩 2。</p><p><b>三个开关：</b>开 1 号，等一会儿，关掉 1 号，再开 2 号，然后进门。灯亮是 2 号；灯灭但灯泡热，是 1 号；灯灭而且凉，是 3 号。灯泡不只会亮，还会发热。</p>',
+  skip() { S.f.kOpen = 1; S.kd = [0, 4, 2]; sideWin('shaft', 0, '零替你开了面板，也找出了那个开关。', TEMPLINE); } });
+const TEMPLINE = { who: '温控器', t: '面板密码是零四二，我最喜欢的温度。至于灯泡……我量了一辈子温度，头一回知道温度还能拿来认开关。' };
 
 function simStep() {
   if (!sim) return;
   if (sim.kind === 'drone') {
     const c = S.pg[sim.i % S.pg.length]; DMAPS.forEach((m, k) => { if (!sim.st[k].done) dStep(m, sim.st[k], c); }); sim.i++;
-    if (sim.st.every(s => s.done)) { const n = S.pg.length; sim = null; sideWin('mail', n <= 5 ? 2 : n <= 6 ? 1 : 0, '三架无人机都把信投进了信箱。你的程序有 ' + n + ' 条指令。', NAVLINE); refresh(); save(); }
+    if (sim.st.every(s => s.done)) { const n = S.pg.length; sim = null; sideWin('mail', n <= 3 ? 2 : 1, '三架无人机都把信投进了信箱。你的循环里有 ' + n + ' 行。', S.f.py ? { who: '导航副机', t: NAVLINE.t + '……而且是用 Python 写的。' } : NAVLINE); refresh(); save(); }
     else if (sim.i >= DSTEPS) { const bad = sim.st.map((s, k) => s.done ? '' : '航图' + CNUM[k]).filter(Boolean).join('、'); sim = null; sfx('bad'); say('飞了 ' + DSTEPS + ' 步，' + bad + '上的信还没送到。同一段程序要让三张图都送到。' + encourage()); refresh(); }
   } else if (sim.kind === 'slide') {
     sim.i += 2;
@@ -1386,6 +1676,16 @@ function simStep() {
   }
 }
 Object.assign(A, {
+  dk() {
+    S.f.dark = 1; say('指尖碰到一个冰凉的开关。你按了下去。'); S.v = 'map'; sfx('click'); save(); say(V.map.desc()); refresh(); introTalk();
+  },
+  notice() {
+    const st = chap() === 4 && S.f.nt1Ask && !S.f.nt1 ? 1 : chap() === 5 && !S.route && S.f.nt2Ask && !S.f.nt2 ? 2 : 0;
+    if (st) { S.v = 'board'; sfx('click'); say(V.board.desc()); if (!S.f['nbIn' + st]) { S.f['nbIn' + st] = 1; talk(st === 1 ? ['告示栏顶上蹲着一团小小的影子，正好在摄像头照不到的那个角。是螺丝。', C('大眼睛要早安？那也给我写一句：晚安。我晚上出门前会看一眼。'), C('我的眼睛是蓝镜片，蓝字我看不见。'), '最底下那一行，只有三格。'] : ['告示栏顶上，螺丝又蹲在那个角落里。它已经知道零要贴什么了。', C('「出来登记」？登记了就要被回收。规程我读过。'), C('你替我回它一句：「别找了，我不出来」。'), '还是那一行。这次有十格，两句话，各七个字。']); } return; }
+    S.f.ntc = (S.f.ntc || 0) + 1;
+    if (S.f.ntc % 3) return say('告示：「本站五舱一枢。当户取物，请集齐时、声、光三枚印章，至机房验印。印章依次领取：先时，再声，后光。」');
+    sfx('click'); say('告示的胶带松了，你顺手把它翻了过来。背面有一行很淡的铅笔字：' + (S.f.gate ? '「今天有人来了。」' : '「今天也没有人来。」') + ' 字迹很工整，像是一台机器写的。');
+  },
   eyes() {
     S.f.eyes = (S.f.eyes || 0) + 1;
     if (S.f.eyes === 1) return talk(['栅栏后面，两点黄光一闪，灭了。', Z('……温室的热感应器这阵子老是误报。断电以后，我的摄像头只看得见一半。'), Z('大概是哪个指示灯的反光。')]);
@@ -1404,14 +1704,16 @@ Object.assign(A, {
     talk(['你把葵花籽按进土里。补光灯一亮，它就冒了芽，一节一节往上长，开出一朵花。', '花盘转了半圈，朝着东边停住了。', Z('画框背面那个「东」字，原来是这个意思。')].concat(fact('sun')));
   },
   fact(k) { sfx('pick'); talk([FACTIN[k]].concat(fact(k))); },
-  dc(c) { if (sim) return; if (c === '0') S.pg = []; else if (c === '-') S.pg.pop(); else if (S.pg.length < DMAX) S.pg.push(c); else return say('无人机只装得下 ' + DMAX + ' 条指令。'); sfx('click'); },
-  dfly() { if (sim) return; if (!S.pg.length) return say('程序还是空的。'); if (!S.pg.includes('F')) return say('程序里一条「前进」都没有，无人机只会原地打转。'); sim = { kind: 'drone', st: dStart(), i: 0 }; sfx('step'); say('三架无人机同时起飞，照着同一段程序飞。'); },
-  rk(i) { S.rk[+i] = !S.rk[+i]; S.arr = null; sfx('click'); },
-  rkall() { S.rk = RTXT.map(() => true); S.arr = null; say('八条规程都恢复了。'); },
+  dc(c) { if (sim) return; if (S.pg.some(x => !DCMD[x])) S.pg = []; if (c === '0') S.pg = []; else if (c === '-') S.pg.pop(); else if (S.pg.length < DMAX) S.pg.push(c); else return say('循环里最多写 ' + DMAX + ' 行。'); sfx('click'); },
+  pyhelp() { talk(PYCARD); },
+  pyswap() { S.f.py = S.f.py ? 0 : 1; sfx('click'); if (S.f.py && !S.f.pyCard) { S.f.pyCard = 1; return talk(PYCARD); } say(S.f.py ? '换成了 Python 写法。程序没变，只是换了一种写法。' : '换回了中文写法。'); },
+  dfly() { if (sim) return; if (!S.pg.length) return say('程序还是空的。'); if (!S.pg.includes('F')) return say('程序里一行「前进()」都没有，无人机只会原地打转。'); sim = { kind: 'drone', st: dStart(), i: 0 }; sfx('step'); say('三架无人机同时起飞，照着同一段程序飞。'); },
+  rk(i) { rkOK(); S.rk[+i] = !S.rk[+i]; S.arr = null; sfx('click'); },
+  rkall() { S.rk = RTXT.map(() => true); S.arr = null; say('五条规程都恢复了。'); },
   rkgo() {
-    const n = S.rk.filter(Boolean).length; if (n < 4) { sfx('bad'); return say('零：「规程删得太多，就不叫规程了。至少留四条。」'); }
-    const a = shelve(S.rk); if (!a) { S.arr = null; sfx('bad'); return say('零把九十种摆法都试了一遍，没有一种能同时满足你留下的 ' + n + ' 条规程。留下的规程里还有互相打架的。' + encourage()); }
-    S.arr = a; sideWin('store', n >= 5 ? 2 : 1, '零照着你留下的 ' + n + ' 条规程，把六件当物都放上了架子，一条也没有违反。', ZEROLINE);
+    rkOK(); const n = S.rk.filter(Boolean).length; if (n < 3) { sfx('bad'); return say('零：「规程删得太多，就不叫规程了。至少留三条。」'); }
+    const [a] = bestShelf(); if (!a) { S.arr = null; sfx('bad'); return say('零试了六种摆法，每一种都有规程被违反。标红的几条还在互相打架。' + encourage()); }
+    S.arr = a; sideWin('store', n >= 4 ? 2 : 1, '零照着你留下的 ' + n + ' 条规程，把四件当物都放上了架子，一条也没有违反。', S.rk[0] ? ZEROLINE : ZEROLINE1);
   },
   pt(p) { if (sim) return; const [x, y] = p.split(',').map(Number), i = S.pots.findIndex(q => q[0] === x && q[1] === y); if (i >= 0) S.pots.splice(i, 1); else if (S.pots.length < NMAX) S.pots.push([x, y]); else return say('花盆用完了。点已经放下的花盆可以收回来。'); sfx('click'); },
   ptclr() { if (sim) return; S.pots = []; say('花盆都收回来了。'); },
@@ -1423,20 +1725,25 @@ Object.assign(A, {
     const res = sortRule(S.srt); if (!res) { sfx('bad'); return talk([C('我看不出规矩。'), C('同一只盒子里的东西，总得有点一样的地方。一样的东西，也不该分在两处。再想想。')]); }
     S.aff.c += S.shard.includes('bunk') ? 0 : 1; sideWin('bunk', res.tier, ['螺丝绕着三只盒子转了一圈，挨个闻了闻。', C(res.t)], CATLINE);
   },
-  pour(p) {
-    if (!S.f.quiet) {
-      S.f.alarmTry = (S.f.alarmTry || 0) + 1;
-      if (muted) { quiet('你那边的声音本来就关着。温控器侧耳听了听，警报也跟着停了。'); return; }
-      if (S.f.alarmTry >= (S.assist ? 2 : 3)) { quiet('零：「我替你把警报按掉了。」'); }
-      else return talk([{ who: '温控器', t: '嘀——嘀——这警报响了三年，我量不准。能让它安静一会儿吗？' }, Z(S.f.alarmTry > 1 ? '这一题要动的是网页本身。网页上有一个声音开关。' : '它的警报，和你那边的声音是连在一起的。')]);
-    }
-    const i = +p[0], j = +p[1], s = S.tk, amt = Math.min(s[i][0], TCAP[j] - s[j][0]); if (amt <= 0) return say(s[i][0] <= 0 ? TN[i] + '箱是空的。' : TN[j] + '箱已经满了。');
-    s[j][1] = (s[j][0] * s[j][1] + amt * s[i][1]) / (s[j][0] + amt); s[j][0] += amt; s[i][0] -= amt; S.tkn++; sfx('click');
-    const k = s.findIndex(t => t[0] > 0 && Math.abs(t[1] - 42) < 1e-6);
-    if (k >= 0) return sideWin('shaft', S.tkn <= 4 ? 2 : S.tkn <= 6 ? 1 : 0, TN[k] + '箱的表针停在了 42 度。你一共倒了 ' + S.tkn + ' 次。', TEMPLINE);
-    say('倒了 ' + amt + ' 升。' + TN[j] + '箱现在 ' + s[j][0] + ' 升，' + tfmt(s[j][1]) + ' 度。');
+  kd(p) { const [i, d] = p.split(',').map(Number); S.kd[i] = (S.kd[i] + d + 10) % 10; sfx('click'); },
+  kgo() {
+    const c = kcode(); if (new Set(c).size < 3) return say('面板上贴着一行小字：三个数字互不相同。');
+    if (c === KANS) { S.f.kOpen = 1; sfx('win'); S.tsw = Math.floor(Math.random() * 3); S.sw = [0, 0, 0]; S.swh = [0, 0, 0]; S.twait = 0; return talk(['咔哒，面板弹开了。', { who: '温控器', t: '零四二。我最喜欢的温度。' }, { who: '温控器', t: '还有一件事。里屋的灯，我一直不知道是哪个开关管的。门外三个开关，门一开就再也关不上，你只有一次机会。' }]); }
+    S.kTry = (S.kTry || 0) + 1; sfx('bad');
+    const bad = KLOG.find(([g, a, b]) => { const [x, y] = kfb(g, c); return x !== a || y !== b; }), [x, y] = kfb(bad[0], c);
+    say('面板没有反应。如果密码是 ' + c + '，那 ' + bad[0] + ' 应该是 ' + x + 'A' + y + 'B，可记录上写的是 ' + bad[1] + 'A' + bad[2] + 'B。');
   },
-  pourclr() { S.tk = TINIT.map(t => t.slice()); S.tkn = 0; say('三只水箱恢复了原样。'); }
+  treset() { S.f.tIn = 0; S.f.tDone = 0; S.ttry = 0; S.kTry = 0; S.tsw = Math.floor(Math.random() * 3); S.sw = [0, 0, 0]; S.swh = [0, 0, 0]; S.twait = 0; say('温控器把线路重新接了一遍，开关都拨回去了。'); },
+  tsw(k) { if (S.f.tIn) return; S.sw[+k] = S.sw[+k] ? 0 : 1; sfx('click'); },
+  twait() { if (S.f.tIn) return; S.twait = (S.twait || 0) + 1; S.swh = S.sw.map(on => on ? 1 : 0); say(S.sw.some(Boolean) ? '你等了一会儿。门缝里什么也看不出来。' : '你等了一会儿。三个开关都关着，灯泡要是热过，这会儿也凉了。'); },
+  tdoor() { if (S.f.tIn) return; S.f.tIn = 1; sfx('click'); say('你推开门。' + ({ 亮: '灯亮着。', '灭·热': '灯灭着。你让温控器摸了摸灯泡：还热。', '灭·凉': '灯灭着。你让温控器摸了摸灯泡：凉的。' })[swObs(S.tsw)]); },
+  tans(k) {
+    k = +k; const seen = swObs(S.tsw), fits = [0, 1, 2].filter(j => swObs(j) === seen);
+    if (fits.length > 1) { sfx('bad'); S.ttry = (S.ttry || 0) + 1; S.f.tIn = 0; S.tsw = Math.floor(Math.random() * 3); S.sw = [0, 0, 0]; S.swh = [0, 0, 0]; S.twait = 0;
+      return talk([{ who: '温控器', t: '你看到的，' + fits.map(j => j + 1 + ' 号').join('和') + '都说得通。蒙对了也不算数。' }, { who: '温控器', t: '我把线路重新接了一遍，开关都拨回去了。再来一次，进门之前想清楚。' }]); }
+    if (k !== S.tsw) { sfx('bad'); return say('温控器：「再想想你看到的：' + seen.replace('·', '，') + '。」'); }
+    S.f.tDone = 1; sideWin('shaft', (S.ttry || 0) + (S.kTry || 0) === 0 ? 2 : 1, '是 ' + (k + 1) + ' 号。温控器把它记在了面板背面。', TEMPLINE);
+  },
 });
 
 /* ---- 笔记本 ---- */
@@ -1455,7 +1762,7 @@ const NOTES = {
   morse: '电码表（点短、划长）：1 ·————　2 ··———　3 ···——　4 ····—　5 ·····　6 —····　7 ——···　8 ———··　9 ————·　0 —————',
   flowers: '温室的花开了：从左到右三槽，红、紫、黄。',
   inner: '主机日志（只有一条是真话）：' + LOGS.join(' '),
-  cargo: '货舱的粉笔字：' + RIDDLE.map(t => t.replace('箱子上的粉笔字：', '')).join(' '),
+  vent: '通风管：码头→当铺→温室→观星台→机房→后舱→码头，连成一圈。螺丝每分钟跑一格，方向不变。滴水声：码头、温室；咔哒声：当铺、观星台；嗡嗡声：机房、后舱。',
   archive: '档案室：抽屉按三张当票的去向编号。拨成你自己当初的决定。',
   mail: '邮件室 · 导航副机：给无人机写一段最多 8 条指令的循环程序，同一段程序要在三张航图上都把信送到。',
   store: '库房规程簿 · 零：八条规程互相打架。划掉几条（至少留四条），让六件当物都能上架。',
@@ -1466,7 +1773,7 @@ const NOTES = {
 c_plate: '　· 盘子：擦得锃亮，贴着「已清洁」。', c_print: '　· 地上：梅花形的小油印，通往通风口。', c_duty: '　· 导航副机整晚在驾驶舱值班。', c_order: '　· 清洁臂不进食，擦完东西就贴贴纸。', c_vent: '　· 通风口栅栏上挂着草莓蒂。'
 };
 const has_ = k => S.shard.includes(k);
-const NDONE = { dock: () => S.f.gate, scale: () => S.f.scale, clock: () => S.f.seal_t, glass: () => S.f.seal_t, locker: () => S.f.locker, chart: () => S.f.locker, tele: () => S.f.seal_l, console: () => S.f.seal_l,
+const NDONE = { vent: () => S.f.pass, dock: () => S.f.gate, scale: () => S.f.scale, clock: () => S.f.seal_t, glass: () => S.f.seal_t, locker: () => S.f.locker, chart: () => S.f.locker, tele: () => S.f.seal_l, console: () => S.f.seal_l,
   tiles: () => S.f.power, vault: () => S.f.seal_s, radio: () => S.f.seal_s, morse: () => S.f.seal_s, flowers: () => S.f.seal_s, inner: () => S.f.pass, cargo: () => S.f.pass, archive: () => S.f.pass,
   mail: () => has_('mail'), store: () => has_('store'), chest: () => S.f.chest, nursery: () => has_('nursery'), bunk: () => has_('bunk'), shaft: () => has_('shaft') };
 const ndone = k => { const b = k.startsWith('c_') ? 'bunk' : k; return !!(NDONE[b] && NDONE[b]()); };
@@ -1587,15 +1894,16 @@ function draw() { tabTitle(); hots = []; K = fitCanvas(cv); ctx.setTransform(K, 
 window.addEventListener('resize', () => { try { draw(); } catch (e) {} });
 function refresh() {
   const v = V[S.v];
+  $('bNote').hidden = !S.notes.length; $('inv').hidden = !S.inv.length && !S.f.hadItem;
   if (S.v === 'radio' && S.chan != null) startMorse(); else stopMorse(); alarm();
   draw();
-  $('goal').textContent = '下一步：' + goalPlace(); $('goal').hidden = !$('title').hidden;
+  $('goal').textContent = '下一步：' + goalPlace(); $('goal').hidden = !$('title').hidden || S.v === 'dark';
   $('where').textContent = v.name; $('back').hidden = !v.parent;
-  $('labs').innerHTML = S.v === 'map' ? [['码头', 61, 111], ['当铺', 128, 57], ['温室', 205, 59], ['观星台', 270, 113], ['机房', 193, 167], [S.f.gate ? '后舱' : '？？？', 125, 167]].map(([t, x, y]) => `<span class="lab" style="left:${x / 3.2}%;top:${y / 1.8}%">${t}</span>`).join('') : '';
-  $('stars').textContent = (S.stars.length ? '✦'.repeat(S.stars.length) : '') + (S.shard.length ? '　◆' + S.shard.length : ''); if ($('title').hidden) autoNotes();
+  $('labs').innerHTML = S.v === 'map' ? [['码头', 61, 111], ['当铺', 128, 57], ['温室', 205, 59], [S.f.power ? '观星台' : '？？？', 270, 113], [S.f.seal_t || S.f.power ? '机房' : '？？？', 193, 167], [S.f.gate ? '后舱' : '？？？', 125, 167]].map(([t, x, y]) => `<span class="lab" style="left:${x / 3.2}%;top:${y / 1.8}%">${t}</span>`).join('') : '';
+  $('stars').classList.toggle('grab', canDrag()); $('stars').textContent = (S.stars.length ? '✦'.repeat(S.stars.length) : '') + (S.shard.length ? '　◆' + S.shard.length : ''); if ($('title').hidden) autoNotes();
   $('inv').innerHTML = S.inv.map(id => `<button type="button" class="slot${S.sel === id ? ' sel' : ''}" data-id="${id}" aria-pressed="${S.sel === id}"><img src="${iconURL[id]}" alt="">${ITEMS[id][0]}</button>`).join('');
   $('pb').innerHTML = (v.btns ? v.btns() : []).map(([t, a, p]) => `<button type="button" data-a="${a}" data-p="${p === undefined ? '' : p}">${t}</button>`).join('');
-  const solved = { scale: S.f.scale, clock: S.f.seal_t, locker: S.f.locker, console: S.f.seal_l, tiles: S.f.power, vault: S.f.seal_s, radio: S.f.seal_s, inner: S.f.pass, crate: S.f.pass, archive: S.f.pass, mail: S.shard.includes('mail'), rules: S.shard.includes('store'), nursery: S.shard.includes('nursery'), bunk: S.shard.includes('bunk'), shaft: S.shard.includes('shaft') }[S.v];
+  const solved = { scale: S.f.scale, clock: S.f.seal_t, locker: S.f.locker, console: S.f.seal_l, tiles: S.f.power, vault: S.f.seal_s, radio: S.f.seal_s, inner: S.f.pass, rule: S.f.pass, crate: S.f.pass, vent: S.f.pass, archive: S.f.pass, mail: S.shard.includes('mail'), rules: S.shard.includes('store'), nursery: S.shard.includes('nursery'), bunk: S.shard.includes('bunk'), shaft: S.shard.includes('shaft') }[S.v];
   $('bSkip').hidden = !(v.skip && !solved && !shuf && (S.assist || (S.hints[S.v] || 0) >= 2));
   $('bSkip').textContent = S.assist ? '请零代劳' : '跳过这一步';
   $('bSol').hidden = !(v.sol && !sim && (S.assist || (S.hints[S.v] || 0) >= 2));
@@ -1610,22 +1918,13 @@ function at(e) {
   return best;
 }
 cv.addEventListener('click', e => { if (dOn) { if (!dWait) nextLine(); return; } const h = at(e); if (h) { const b = cv.getBoundingClientRect(); puff((e.clientX - b.left) * W / b.width, (e.clientY - b.top) * H / b.height); sfx('tap'); act(h.a, h.p); } });
-cv.addEventListener('mousemove', e => { const b = cv.getBoundingClientRect(); mx = (e.clientX - b.left) * W / b.width; my = (e.clientY - b.top) * H / b.height; const h = dOn ? null : at(e); cv.style.cursor = h ? HAND : 'default'; $('tip').hidden = !(h && h.tip); if (h && h.tip) $('tip').textContent = h.tip; });
-$('stars').draggable = true;
-$('stars').addEventListener('dragstart', e => { if (!S.stars.length) return e.preventDefault(); e.dataTransfer.setData('text/plain', '✦'); e.dataTransfer.effectAllowed = 'move'; });
-cv.addEventListener('dragover', e => { if (S.v === 'back' && S.stars.length && !S.f.lit) e.preventDefault(); });
-cv.addEventListener('drop', e => {
-  e.preventDefault(); if (dOn || S.v !== 'back' || S.f.lit || !S.stars.length) return;
-  const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * W / b.width, y = (e.clientY - b.top) * H / b.height;
-  if (x < 110 || x > 210 || y < 50 || y > 130) return say('星屑落在了桌上。再往蛋糕那边一点。');
-  puff(x, y); S.f.lit = 1; sfx('pick'); act('cake');
-});
-cv.addEventListener('mouseleave', () => { mx = my = -1; $('tip').hidden = true; });
+cv.addEventListener('mousemove', e => { const b = cv.getBoundingClientRect(); mx = (e.clientX - b.left) * W / b.width; my = (e.clientY - b.top) * H / b.height; const h = dOn ? null : at(e); cv.style.cursor = S.v === 'dark' ? 'none' : h && !h.hide ? HAND : 'default'; if (S.v === 'dark') draw(); $('tip').hidden = !(h && h.tip); if (h && h.tip) $('tip').textContent = h.tip; });
+cv.addEventListener('mouseleave', () => { mx = my = -1; $('tip').hidden = true; if (S.v === 'dark') draw(); });
 $('inv').addEventListener('click', e => { const el = e.target.closest('[data-id]'); if (el && !dOn) invClick(el.dataset.id); });
 $('pb').addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (el) act(el.dataset.a, el.dataset.p); });
 $('back').onclick = () => { if (dOn) return; const p = V[S.v].parent; if (p) act('go', p); };
 const SECT = ['map', 'dock', 'shop', 'green', 'obs', 'core', 'back'];
-const special = () => (S.v === 'obs' && S.f.seal_l && !S.stars.includes(2)) || (S.v === 'back' && S.stars.length && !S.f.lit && S.f.cakeTry);
+const special = () => S.v === 'obs' && S.f.seal_l && !S.stars.includes(2);
 $('bHint').onclick = () => { if (dOn) return; const v = V[S.v], useG = SECT.includes(S.v) && !special(), hk = useG ? 'g:' + goal()[0] : S.v, g = goal(), t = useG ? [g[0], g[2] || g[0]] : v.hint ? v.hint() : ['四处点点看。'], n = S.hints[hk] || 0; say('提示：' + t[Math.min(n, t.length - 1)] + (v.skip && !S.assist && n === 0 ? '（在这个画面再点一次提示，就会出现「跳过这一步」' + (v.sol ? '和「看解答」' : '') + '。）' : '')); S.hints[hk] = n + 1; if (S.v === 'obs' && !useG && n >= 1) S.f.ttl = 1; refresh(); save(); };
 $('bSkip').onclick = () => { if (dOn) return; const v = V[S.v]; if (v.skip) { const hk = HOWKEY[S.v]; if (hk && !S.how[hk]) S.how[hk] = S.assist ? 'zero' : 'skip'; skipping = true; try { v.skip(); } finally { skipping = false; } refresh(); save(); } };
 $('bSnd').onclick = () => setMute(!muted);
@@ -1685,7 +1984,7 @@ function buildSlides() {
     3: ['l', { take: '那个愿望，你赎回去了。今年，愿你亲手把它兑现。', leave: '旧的愿望留下了。愿你新许的愿，一个一个兑现。', give: '你把愿望送了出去。愿它在别处实现，也愿你的下一个不落空。' }] };
   slides = A_.map(([art, t], i) => ({ art, t: (TK[i] && TK[i][1][S.ch[TK[i][0]]]) || t }));
   slides.push({ art: () => { st(); fw(5, 11); r(0, 84, 160, 6, 1); catAt(18, 66, 2); circ(136, 70, 9, 3); circ(136, 70, 6, 4); circ(136 + Math.round(Math.sin(tick / 6) * 2), 70, 2, 6); r(132, 79, 8, 5, 2); cake(56); }, t: '零号站全体成员，在这里一起祝你：', big: true });
-  slides.push({ art: () => { st(); fw(9, 29); fw(6, 71); r(0, 84, 160, 6, 1); cake(56); }, t: (ME ? ME.name + '，' : '') + '祝你一切都好！', sub: '“王”携　零 · 螺丝 · 清洁臂 · 导航副机 · 温控器' + (ME && ME.from ? ' · ' + ME.from : '') + '　敬上', big: true });
+  slides.push({ art: () => { st(); fw(9, 29); fw(6, 71); r(0, 84, 160, 6, 1); cake(56); }, t: (ME ? callName() + '，' : '') + '祝你一切都好！', sub: '“王”携　零 · 螺丝 · 清洁臂 · 导航副机 · 温控器' + (ME && ME.from ? ' · ' + ME.from : '') + '　敬上', big: true });
 }
 function drawSlide() { const old = ctx, sl = slides[si]; ctx = sctx; ctx.imageSmoothingEnabled = false; r(0, 0, 160, 90, 0); sl.art(); ctx = old; $('stext').textContent = sl.t; $('stext').className = sl.big ? 'big' : ''; $('ssub').textContent = sl.sub || ''; $('scount').textContent = (si + 1) + ' / ' + slides.length + '　' + (si === slides.length - 1 ? '点击结束 ▸' : '点击继续 ▸'); }
 function runSlides(done) { buildSlides(); si = 0; slideDone = done; $('slide').hidden = false; drawSlide(); }
@@ -1705,7 +2004,7 @@ function showEnd(direct) {
     else h += `<p style="color:#6b8cc4;font-size:13px">站里还散落着 ${3 - S.stars.length} 粒没被捡起的星屑。另外五个结局，取决于你怎么回答零和螺丝。</p>`;
   }
   if (!ME) h += `<div class="bless"><p>后舱里还有一封写给某个人的信，要全名和口令才能拆开。</p><label for="ename">全名</label><input id="ename" autocomplete="off"><label for="ecode">口令</label><input id="ecode" autocomplete="off" autocapitalize="off"><p id="emsg"></p><div class="row"><button type="button" class="pri" id="eGo">拆信</button></div></div>`;
-  h += `<div class="memo"><h3>写在最后</h3><p>借 AI 创作之力一用，想了一点小点子，合成了这个小游戏，愿它能带给你们一些小乐趣，也希望以后的生活里，不乏这样的小确幸。</p><p>感谢你的参与。游戏内容也许有些无聊冗杂，但我的心意不变。这也是我在 20 岁之前的一次尝试。</p><p class="sig">我们来日方长${ME ? '，' + esc(ME.call || ME.name) : ''}。<br>—— 王</p></div>`;
+  h += `<div class="memo"><h3>写在最后</h3><p>借 AI 创作之力一用，想了一点小点子，合成了这个小游戏，愿它能带给你们一些小乐趣，也希望以后的生活里，不乏这样的小确幸。</p><p>感谢你的参与。游戏内容也许有些无聊冗杂，但我的心意不变。这也是我在 20 岁之前的一次尝试。</p><p class="sig">我们来日方长${ME ? '，' + esc(callName()) : ''}。<br>—— 王</p></div>`;
   h += `<div class="row"><button type="button" id="eAgain">再看一遍祝福</button><button type="button" id="eCG">再看一遍完结动画</button><button type="button" id="eBack">${direct ? '进站看看' : '回到站里'}</button>${direct ? '' : '<button type="button" id="eNew">从头再来，走另一条线</button>'}</div>`;
   $('endbox').innerHTML = h; $('end').hidden = false;
   $('eBack').onclick = () => { $('end').hidden = true; if (direct) startGame(); };
@@ -1931,7 +2230,7 @@ function cgFrame() {
   if (t > TL.fireworks) { ctx.setTransform(CK, 0, 0, CK, 0, 0); ctx.globalAlpha = ease((t - TL.fireworks) / 2); cgFireworks(t); ctx.globalAlpha = 1; ctx.setTransform(1, 0, 0, 1, 0, 0); }
   ctx = old;
   let line = '', big = false;
-  const nm = s => s.replace('{name}', ME ? ME.name : '你');
+  const nm = s => s.replace('{name}', ME ? callName() : '你');
   if (t < TL.zoomIn) { if (t > TL.caption) line = CG_ROOMS[Math.max(0, Math.min(4, Math.floor((t - TL.caption) / TL.capGap)))].line; }
   else if (t > SONG_T && t < SONG_END) { line = '♪ 祝你生日快乐 ♪'; big = true; } else if (t >= SONG_END && t < TL.wishEnd) line = '好了，现在许个愿吧。';
   else if (t > TL.bless) { const k = Math.floor((t - TL.bless) / TL.blessGap); line = WANG.slice(0, Math.min(k + 1, WANG.length)).map(nm).join('\n'); big = true; if (k >= WANG.length) $('cgEnd').hidden = false; }
@@ -2009,22 +2308,66 @@ $('cg').onclick = () => { if (!$('cgEnd').hidden) endCG(); };
 const started = () => S.inv.length || Object.keys(S.f).length || S.stars.length;
 function showTitle() { $('assist').checked = !!S.assist; $('title').hidden = false; $('code').value = S.code || ''; $('pname').value = S.name || ''; $('bGo').textContent = started() ? '继续' : '进站'; $('bNew').hidden = !started(); $('tmsg').textContent = ''; }
 function startGame() {
-  $('title').hidden = true; audio(); say(V[S.v].desc()); refresh();
-  if (!S.f.intro) { S.f.intro = 1; save(); talk(['小艇靠上了码头。对接舱的灯只亮了一半。', Z('……有人……来了？'), Z('欢迎来到零号站，{name}。我是这里的管理员，他们叫我「零」。'), Z('站里的主电断了，我说话可能断断续续。'), Z('……不是坏了。是有人切断的。是谁、为什么，我想不起来了。'), Z('不过站规第一条：当户的东西，一样不能少。你要取的东西还在。'), Z('集齐时、声、光三枚印章，后舱的门就会为你打开。'), Z('每一步要做什么，我都写在画面下方那一行「下一步」里；地图上也会标出该去哪。'), Z('先从温室开始吧。那里的玻璃上，映着一座钟。'), Z('对了，当铺柜台下面有一只写着你名字的保管箱。有空可以去看看。'),].concat(S.assist ? [Z('还有，你这次是「陪同模式」。意思是：每道谜题的右上角都有一个「请零代劳」，点一下，我就替你解开。'), Z('故事和选择还是你自己的。想自己解也完全可以，不点那个按钮就行；想关掉，去右上角的菜单。')] : []).concat([ Z('还有，每个舱段的地板上都有一个舱口，下面各有一间小屋。不去也能离站，去了会有别的收获。'), '（右上角的「笔记」会自动记下你看到的线索。）',]).concat([ '（点地图上的舱段进入。右上角有提示，卡住了不丢人。）'])); }
+  $('title').hidden = true; audio(); if (!S.f.intro && !S.f.dark) { S.v = 'dark'; S.dkT = tick; } say(V[S.v].desc()); refresh();
+  if (!S.f.intro && S.f.dark) introTalk();
 }
-async function enter(direct) {
+function introTalk() {
+  { S.f.intro = 1; save(); talk(['对接舱的灯亮了，只亮了一半。窗外，你的小艇刚靠上码头。', Z('……有人……来了？'), Z('欢迎来到零号站，{name}。我是这里的管理员，他们叫我「零」。'), Z('站里的主电断了，我说话可能断断续续。'), Z('……不是坏了。是有人切断的。是谁、为什么，我想不起来了。'), Z('不过站规第一条：当户的东西，一样不能少。你要取的东西还在。'), Z('集齐时、声、光三枚印章，后舱的门就会为你打开。'), Z('下一步该去哪，画面下方会写着；具体怎么做，点「提示」问我。'), Z('先从温室开始吧。那里的玻璃上，映着一座钟。'), Z('对了，当铺柜台下面有一只写着你名字的保管箱。有空可以去看看。'),].concat(S.assist ? [Z('还有，你这次是「陪同模式」。意思是：每道谜题的右上角都有一个「请零代劳」，点一下，我就替你解开。'), Z('故事和选择还是你自己的。想自己解也完全可以，不点那个按钮就行；想关掉，去右上角的菜单。')] : []).concat([ Z('还有，每个舱段的地板上都有一个舱口，下面各有一间小屋。不去也能离站，去了会有别的收获。'), '（看到线索的时候，右上角会多出一本「笔记」，替你记下来。）',]).concat([ '（点地图上的舱段进入。右上角有提示，卡住了不丢人。）']), () => { if (!S.f.svTip) { S.f.svTip = 1; save(); svOpen('first'); } }); }
+}
+async function enter(direct, reset) {
   const code = $('code').value, nm = $('pname').value, any = norm(code) || normName(nm);
   if (any && !(norm(code) && normName(nm))) { $('tmsg').textContent = '全名和口令要一起填。都不填的话，就以访客身份进站。'; return; }
   $('tmsg').textContent = any ? '正在核对……' : '';
   const m = await unlock(nm, code);
   if (any && !m) { $('tmsg').textContent = '站里没有这个名字和口令对应的当票。检查一下有没有打错字，或者都清空后以访客身份进站。'; return; }
   if (direct && !m) { $('tmsg').textContent = '要先填上你的全名和口令，才能找到给你的话。'; return; }
+  const sl = slotOf(nm, code); if (sl !== curSlot) { curSlot = sl; S = load(sl); }
+  if (reset) S = fresh();
   ME = m; S.code = norm(code); S.name = nm.trim(); S.assist = $('assist').checked || (S.assist === undefined && !!(m && m.easy)); save(); $('tmsg').textContent = '';
   if (direct) { $('title').hidden = true; audio(); runSlides(() => runCG(() => showEnd(true))); } else startGame();
 }
 $('bGo').onclick = () => enter(false);
 $('bBless').onclick = () => enter(true);
-$('bNew').onclick = () => { S = fresh(); save(); enter(false); };
+$('bNew').onclick = () => { const b = $('bNew'); if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '确定清空这个名字的进度？再点一次'; return; } delete b.dataset.sure; b.textContent = '从头开始'; enter(false, true); };
+function peekTitle() { const o = readSlot(slotOf($('pname').value, $('code').value)), has = !!(o && (o.inv.length || Object.keys(o.f).length || o.stars.length)); $('bGo').textContent = has ? '继续' : '进站'; $('bNew').hidden = !has; delete $('bNew').dataset.sure; $('bNew').textContent = '从头开始'; }
+$('pname').addEventListener('input', peekTitle); $('code').addEventListener('input', peekTitle);
+/* ================= 存档码 ================= */
+const SVTAG = 'ZS1';
+const ck4 = t => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } h ^= 0x5a17; return (h >>> 0).toString(36).slice(-4).padStart(4, '0'); };
+async function zip(str, inv) {
+  const fmt = 'deflate-raw', bytes = inv ? Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)) : new TextEncoder().encode(str);
+  const out = await new Response(new Blob([bytes]).stream().pipeThrough(inv ? new DecompressionStream(fmt) : new CompressionStream(fmt))).arrayBuffer();
+  if (inv) return new TextDecoder().decode(out);
+  let bin = ''; new Uint8Array(out).forEach(b => { bin += String.fromCharCode(b); }); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function exportCode() { const o = Object.assign({}, JSON.parse(JSON.stringify(S)), { slot: curSlot }); delete o.code; const body = await zip(JSON.stringify(o)); return SVTAG + '.' + body + '.' + ck4(body); }
+async function importCode(txt) {
+  const m = String(txt || '').replace(/\s+/g, '').match(/^ZS1\.([A-Za-z0-9_-]+)\.([0-9a-z]{4})$/);
+  if (!m || ck4(m[1]) !== m[2]) return null;
+  try { const o = JSON.parse(await zip(m[1], true)); return okSave(o) ? o : null; } catch (e) { return null; }
+}
+function svOpen(mode) {   // first：开场后的单独提示；all：右下角常驻按钮（导出 + 读取）
+  const has = !!started(), first = mode === 'first';
+  $('svFirst').hidden = !first; $('svOut').hidden = !has; $('svIn').hidden = first; $('svmsg').textContent = '';
+  $('svTitle').textContent = first ? '先说一件重要的事：存档' : '存档码';
+  $('svOutT').textContent = first ? '' : '这是' + (S.name ? '「' + S.name + '」' : '访客') + '现在的存档码。换电脑、换浏览器之前，复制下来存好：';
+  $('svInT').textContent = has ? '换了浏览器？把之前复制的存档码粘贴到下面（会替换上面这份进度）：' : '这个浏览器里还没有进度。换了浏览器的话，把之前复制的存档码粘贴到下面，就能接着玩：';
+  $('svClose').textContent = first ? '知道了，开始吧' : '关闭'; $('save').hidden = false;
+  if (has) { $('svcode').value = '生成中……'; exportCode().then(c => { $('svcode').value = c; }).catch(() => { $('svcode').value = ''; $('svmsg').textContent = '这个浏览器生成不了存档码，换个新一点的浏览器试试。'; }); }
+  if (!first) $('svin').value = '';
+}
+$('bSave').onclick = () => { if (!dOn || !$('title').hidden) svOpen('all'); };
+$('svClose').onclick = () => { $('save').hidden = true; };
+$('svCopy').onclick = async () => { const t = $('svcode').value; try { await navigator.clipboard.writeText(t); $('svmsg').textContent = '已复制。找个地方存好，比如发给自己。'; } catch (e) { $('svcode').select(); $('svmsg').textContent = '没能自动复制，存档码已经选中了，按 Ctrl+C 复制。'; } };
+$('svLoad').onclick = async () => {
+  const o = await importCode($('svin').value);
+  if (!o) { $('svmsg').textContent = '这串存档码不完整，或者被改动过。重新完整复制一遍再试试。'; return; }
+  const sl = o.slot || slotOf(o.name, ''); delete o.slot; curSlot = sl; S = Object.assign(fresh(), o); save();
+  $('save').hidden = true; showTitle(); $('pname').value = S.name || ''; $('code').value = '';
+  $('bGo').textContent = '继续'; $('bNew').hidden = true;
+  $('tmsg').textContent = S.name ? '存档已导入。为了安全，存档码里不带口令：填上你的口令，再点「继续」。' : '存档已导入。点「继续」接着玩。';
+  (S.name ? $('code') : $('bGo')).focus();
+};
 $('code').addEventListener('keydown', e => { if (e.key === 'Enter') enter(false); });
 $('pname').addEventListener('keydown', e => { if (e.key === 'Enter') $('code').focus(); });
 
@@ -2041,5 +2384,5 @@ async function renderCGAudio(dur) {
   let bin = ''; const u = new Uint8Array(out.buffer); for (let i = 0; i < u.length; i += 32768) bin += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
   return { peak, b64: btoa(bin) };
 }
-window.__G = { get sim() { return sim; }, get tick() { return tick; }, renderCGAudio, runCG, endCG, get cgOn() { return cgOn; }, set cgT(v) { cgT0 = performance.now() - v * 1000; fwSeen = {}; }, photoImg, get ME() { return ME; }, get S() { return S; }, get shuf() { return shuf; }, get hots() { return hots; }, get dOn() { return dOn; }, flow, TS, LOCK_CODE, PEG_OK, unlock, route };
+window.__G = { get sim() { return sim; }, get tick() { return tick; }, renderCGAudio, runCG, endCG, get cgOn() { return cgOn; }, set cgT(v) { cgT0 = performance.now() - v * 1000; fwSeen = {}; }, photoImg, get ME() { return ME; }, get S() { return S; }, get shuf() { return shuf; }, get hots() { return hots; }, get dOn() { return dOn; }, flow, TS, LOCK_CODE, PEG_OK, unlock, route, V, refresh, ventCands };
 })();
