@@ -95,7 +95,8 @@ function give(id) { if (!has(id)) S.inv.push(id); S.f.hadItem = 1; sfx('pick'); 
 function drop(id) { S.inv = S.inv.filter(x => x !== id); if (S.sel === id) S.sel = null; }
 function say(t) { $('cap').textContent = t || ''; }
 const who = () => (ME && ME.name) || '旅人';
-const callName = () => ME ? (ME.call || ME.name + '同学') : '';   // 祝福里的称呼：有称呼用称呼，没有就「全名＋同学」
+const callName = () => ME ? (ME.formal || (ME.call ? ME.name : ME.name + '同学')) : '';   // 有称呼的：这里用全名，称呼只留给「写在最后」   // 幻灯片、动画用；「写在最后」用 lastName
+const lastName = () => ME ? (ME.call || ME.name + '同学') : '';   // 祝福里的称呼：有称呼用称呼，没有就「全名＋同学」
 
 const LOCK_CODE = [7, 6, 4], VAULT_CODE = '417', FREQ = 96.5, CLOCK_OK = 220;
 const TELE = [8, 5, 4, 6, 3], PEG_OK = [0, 3, 4, 2, 5];
@@ -2004,7 +2005,7 @@ function showEnd(direct) {
     else h += `<p style="color:#6b8cc4;font-size:13px">站里还散落着 ${3 - S.stars.length} 粒没被捡起的星屑。另外五个结局，取决于你怎么回答零和螺丝。</p>`;
   }
   if (!ME) h += `<div class="bless"><p>后舱里还有一封写给某个人的信，要全名和口令才能拆开。</p><label for="ename">全名</label><input id="ename" autocomplete="off"><label for="ecode">口令</label><input id="ecode" autocomplete="off" autocapitalize="off"><p id="emsg"></p><div class="row"><button type="button" class="pri" id="eGo">拆信</button></div></div>`;
-  h += `<div class="memo"><h3>写在最后</h3><p>借 AI 创作之力一用，想了一点小点子，合成了这个小游戏，愿它能带给你们一些小乐趣，也希望以后的生活里，不乏这样的小确幸。</p><p>感谢你的参与。游戏内容也许有些无聊冗杂，但我的心意不变。这也是我在 20 岁之前的一次尝试。</p><p class="sig">我们来日方长${ME ? '，' + esc(callName()) : ''}。<br>—— 王</p></div>`;
+  h += `<div class="memo"><h3>写在最后</h3><p>借 AI 创作之力一用，想了一点小点子，合成了这个小游戏，愿它能带给你们一些小乐趣，也希望以后的生活里，不乏这样的小确幸。</p><p>感谢你的参与。游戏内容也许有些无聊冗杂，但我的心意不变。这也是我在 20 岁之前的一次尝试。</p><p class="sig">我们来日方长${ME ? '，' + esc(lastName()) : ''}。<br>—— 王</p></div>`;
   h += `<div class="row"><button type="button" id="eAgain">再看一遍祝福</button><button type="button" id="eCG">再看一遍完结动画</button><button type="button" id="eBack">${direct ? '进站看看' : '回到站里'}</button>${direct ? '' : '<button type="button" id="eNew">从头再来，走另一条线</button>'}</div>`;
   $('endbox').innerHTML = h; $('end').hidden = false;
   $('eBack').onclick = () => { $('end').hidden = true; if (direct) startGame(); };
